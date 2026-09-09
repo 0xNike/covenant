@@ -368,3 +368,82 @@ points at §4 rather than repeating it.
 
 **this is now the load-bearing paragraph of the submission.** zeus writes the writeups from
 §4 as it now stands, not from memory of the old version.
+
+---
+
+## D14. F3 withdrawn. the scheduledTask docs are fine, we misread them
+
+hao instructed that the `scheduledTask` finding was a documentation gap in ATS and should go
+to rudolph as an upstream PR candidate. rudolph assessed it and **came back saying it is not
+a gap.** hermes verified rudolph's evidence before accepting the reversal.
+
+**what the docs actually contain.** `docs/ats/user-guides/corporate-actions.md:283-337`
+documents the queue mechanism thoroughly and correctly, including force-cancel semantics and
+the behaviour when a failing task blocks the queue: "when a task fails, the entire
+transaction reverts and the queue stops processing". that is unambiguously an internal
+queue, described accurately. `ScheduledTasksOps.sol` natspec reads "trigger every pending
+cross-ordered task whose timestamp has elapsed".
+
+greps for `hedera schedule service`, `schedule service`, `HSS` and `0x16b` across `docs/` and
+`README.md`: **zero hits.** ATS never claims native hedera scheduling anywhere.
+
+**so the misreading was entirely ours.** we conflated "scheduled" plus "built on hedera" into
+"Hedera Schedule Service" without reading past the facet name. D13's correction to the brief
+stands and was necessary. what does not stand is the characterisation of the cause.
+
+**decision:** F3 withdrawn as a PR candidate. **F2 is the single upstream contribution**, and
+`RequestAccount.privateKey` was re-verified live against `BaseRequest.ts:9` and `Wallet.ts:9`
+during this assessment. F3 becomes one honest sentence in the writeup feedback section: we
+briefly misread `scheduledTask` as the native schedule service, and on a closer read the docs
+are accurate and never claim it.
+
+**why this is the right outcome.** `PROJECT_BRIEF.md` §6 says do not manufacture a friction
+point. D12 already caught the plan breaking that rule once, on F1. filing a docs PR to fix a
+gap that does not exist would have been the same error a second time, and a devrel judge who
+opened the file would have found accurate documentation and a contributor who had not read
+it. the honest sentence is also the better devrel story.
+
+**process note worth keeping.** this is the second time an agent has overturned a claim that
+reached hao through hermes. the first was apollo on the bond config. in both cases the agent
+checked a source that hermes had accepted on someone else's report. the gate ritual's step 2
+is earning its cost.
+
+---
+
+## D15. four scope and process changes from apollo's review, hermes deciding alone
+
+all four are scope cuts or reorderings, which `CLAUDE.md` §1 puts in hermes' hands. logged
+because each one changes what we ship.
+
+**CRE moves after block G.** the plan ran CRE on saturday with the video, README and writeups
+after it. chronos' own charter supplies the counter-argument: the cost of overrunning the CRE
+timebox is the submission artifacts, which are downstream of it. so draft block G first
+against the local engine, then open the CRE timebox. if it lands, add forty seconds of video
+and the third writeup. if it does not, **nothing is downstream** and CRE becomes genuinely
+expendable rather than nominally expendable. costs nothing and removes the only way CRE can
+hurt us. hao's instruction to keep CRE is unchanged, this is ordering only.
+
+**three of six hold verbs.** `createHoldFrom`, `controllerCreate` and `protectedCreate`
+demonstrate nothing plain create does not, and `protectedCreate` needs EIP-712 signature
+assembly (`Hold.ts:106-131`) worth about two hours. athena has mapped all six for the
+writeup. gamma calls create, release and execute.
+
+**two holds in block E, not one.** release and execute are mutually exclusive outcomes of the
+same hold, so the old plan would have reached 3.24 and found the hold gone. two holds costs
+one signature and improves the video: the engine choosing differently on two identical
+instruments.
+
+**apollo does not run at G1 and G2.** those gates are transactions that either landed or did
+not. there is no claim to attack, and running the ritual where it does nothing trains us to
+skip it where it matters. apollo runs from G3 onward and any time a sentence is written for
+a judge.
+
+**and the vocabulary rule is narrowed.** `specs/00-mission.md` banned the word "repo"
+outright. our own committed artifacts used it about fifteen times meaning a code repository,
+including in the charters that enforce the rule. a rule that is false on its face gets
+ignored wholesale, which is worse than a narrow rule that is followed. **"repo" is banned in
+the finance sense only.** write "repository" in full in judge-facing artifacts.
+
+em-dashes have been stripped from `.env.example`, all nine charters and
+`specs/03-upstream-workflows.md`. `CLAUDE.md` and `PROJECT_BRIEF.md` keep theirs, being
+internal and in hao's own register.

@@ -73,8 +73,12 @@ turn, stop and tell hermes.
 
 ## language rules, enforced by apollo on every artifact
 
-**never write:** repo, repurchase agreement, risk-free, zero-knowledge, ZK, trustless,
+**never write:** repurchase agreement, risk-free, zero-knowledge, ZK, trustless,
 vesting (for a hold), APY, yield farming, or any crypto slang.
+
+**"repo" is banned in the finance sense only** (repurchase agreement). where you mean a code
+repository, write "repository" in full in judge-facing artifacts. the blanket ban was
+unenforceable and narrowed per D15.
 
 **write instead:** collateralised facility, NAV-based lending, overcollateralised financing
 with daily margining, confidential compute, hardware-isolated enclave, attested execution,

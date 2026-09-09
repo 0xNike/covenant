@@ -104,7 +104,9 @@ fixed sequence, no exceptions, no shortcuts when we are behind:
    a claim without a hashscan link is not a claim
 3. argus appends the transaction id and hashscan url to `EVIDENCE.md`
 4. **iris captures footage immediately.** before polish, before the next task
-5. apollo attacks the claim as a finance-literate judge would
+5. apollo attacks the claim as a finance-literate judge would. **G3 onward only, and any
+   time a sentence is written for a judge.** not at G1 or G2, which are transactions that
+   either landed or did not, with nothing to attack. see D15
 6. rudolph commits
 7. hermes signs off, or escalates to hao for G3 and G5
 
@@ -114,7 +116,11 @@ fixed sequence, no exceptions, no shortcuts when we are behind:
       never rewrite history. the repo is demoable at every commit after G1.
 - [ ] **2.3** every prompt and spec written during the build lands in `specs/`. eligibility.
 - [ ] **2.4** apollo enforces §8 vocabulary on every artifact at the moment it is written,
-      not in a sweep at the end. never repo, risk-free, ZK, trustless, vesting, APY.
+      not in a sweep at the end. never risk-free, ZK, trustless, vesting, APY.
+      **"repo" is banned in the finance sense only** (repurchase agreement). write
+      "repository" in full in judge-facing artifacts. the blanket ban was unenforceable:
+      our own committed files used it ~15 times meaning a code repository, and a rule that
+      is false on its face gets ignored wholesale. narrowed per D15.
 - [ ] **2.5** log every non-obvious call in `DECISIONS.md`, including any apollo objection i
       proceed against.
 
@@ -139,32 +145,78 @@ calendar is indicative. gates are not.
       no token association step is needed: there are no associate methods in `port/in`,
       which confirms ATS securities are EVM contract state via the resolver, not HTS native
       tokens. so a failed transfer in block B fails for the reason we claim it does.
-- [ ] **3.3** gamma: sdk init, wallet connect, network handshake. prove we can read chain
-      state before we try to write any.
-- [ ] **3.4** gamma: issue the kpi-linked private credit note against the deployed bond
-      config. no solidity, no deployment.
-- [ ] **3.5** argus: find it on hashscan, link into `EVIDENCE.md`.
+- [ ] **3.3** gamma: sdk init, wallet connect, network handshake. **rabby confirmed
+      reporting `isMetaMask: true`**, which is what `MetamaskService.ts:99` hard-checks, so
+      no wallet detour. prove we can read chain state before we try to write any.
+- [ ] **3.4** gamma: **issue via `Bond.createKpiLinkedRate` against config `0x...04`.**
+      rewritten per D10. this single call is the highest-consequence moment in the build.
+
+      **config `0x...04`, never `0x...02`.** config 2 is bond *variable rate* and carries no
+      `KpisFacet` and no `KpiLinkedRateFacet`. issuing on it means `addKpiData` hits an
+      unregistered selector at block D and the build is lost at hour 20. verified live on
+      resolver `0.0.9212226`: config 4 is at version 1, 8 configurations registered.
+
+      **`createKpiLinkedRate` IS the issuance call**, not a later configuration step.
+      `port/in/bond/Bond.ts:227` takes `CreateBondKpiLinkedRateRequest`, builds
+      `SecurityProps`, returns a new security. old task 3.18 was impossible and is deleted.
+
+      **three flags, set once here, each silently killing a later block if wrong:**
+      - `clearingActive: false`. `HoldByPartition.sol:50` carries `onlyClearingDisabled`.
+        clearing on means block E is dead and unrecoverable
+      - `internalKycActivated: true`. otherwise block B does not block and the compliance
+        demo is a lie
+      - `proceedRecipientsIds`: at least one project address, or `addKpiData` is **silently
+        ignored** (`KpiLinkedRateLib.sol:87-111`). silent, not an error
+
+      **choose `missedPenalty` and the baseline here** so the KPI path and the missed-report
+      path produce visibly different rates. see D11, this is what makes G4 provable.
+- [ ] **3.5** argus: find it on hashscan, link into `EVIDENCE.md`. **also read back the
+      config id and the three flags from chain** and confirm each. this is the one gate where
+      verifying the parameters matters more than verifying the transaction landed.
 - [ ] **3.6** iris: capture the issuance shot.
 - [ ] **G1** hermes signs off.
 
 ### block B. compliance. thu 10 sep, target G2 by 14:00 SGT
 
-- [ ] **3.7** gamma: attempt a transfer to an unverified party. **it must fail at the token.**
-      the rejection is the evidence, capture the revert.
-- [ ] **3.8** gamma: kyc grant to that party.
-- [ ] **3.9** gamma: same transfer again. it succeeds.
+**the evidence model changed here. read this before planning the shot.**
+`TransferCommandHandler.ts:42` pre-checks with a `CanTransferByPartitionQuery` eth_call and
+throws a client-side `InvalidKycStatus` **before submitting any transaction.** so the blocked
+transfer produces **no hashscan link** by default. the token would reject it, but the sdk
+never lets it get that far.
+
+- [ ] **3.7** gamma: attempt a transfer to an unverified party. capture the thrown sdk error
+      **and** the `CanTransferByPartition` eth_call returning false. that pair is the
+      evidence, not a failed transaction.
+- [ ] **3.7b** gamma: **additionally force one raw on-chain attempt**, bypassing the sdk
+      pre-check, so we get a genuinely reverted transaction on hashscan. "the token rejected
+      it" is the claim we are making, and a client-side exception does not prove it.
+      timebox 45 minutes. if it fights back, ship 3.7 alone and say plainly in the writeup
+      that the sdk blocks client-side.
+- [ ] **3.8** gamma: kyc grant. **use the mock external kyc list path**
+      (`ExternalKycListsManagement.createExternalKycMock()` then `grantKycMock()`), not
+      internal `grantKyc`. `GrantKycCommandHandler.ts:38-41` calls `verifyVc()` from
+      `@terminal3/verify_vc` and throws without a real verifiable credential. we do not have
+      one and are not getting one this weekend.
+- [ ] **3.8b** gamma: **grant kyc to the lender too, not just the holder.**
+      `executeHoldByPartition` carries `onlyIdentifiedAddresses(tokenHolder, _to)` and
+      `onlyCompliant` (`HoldByPartition.sol:118-119`), so an unverified lender means block E
+      reverts at the money shot. cheap now, fatal on saturday.
+- [ ] **3.9** gamma: same transfer again. it succeeds. **this one does produce a hashscan
+      link**, and the contrast with 3.7 is the demo.
 - [ ] **3.10** hercules: the console renders all three states legibly. a judge watching at
       1.5x has to see blocked, granted, permitted.
-- [ ] **3.11** argus records all three transactions. iris captures immediately. these are
-      two of the four shots that matter.
-- [ ] **G2** hermes signs off.
+- [ ] **3.11** argus records. iris captures immediately. two of the four shots that matter.
+- [ ] **G2** hermes signs off. **apollo not run at this gate**, see D15.
 
 ### block C. coupon. thu 10 sep, target G3 by 20:00 SGT
 
 - [ ] **3.12** gamma: `updateMaturityDate` to compress the lifecycle into demo time.
+      needs `ROLE_MATURITY_MANAGER`, which athena found is **missing from the sdk's
+      `SecurityRole` TS enum** and must be passed to `grantRole` as a raw hex literal.
 - [ ] **3.13** gamma: set the coupon, distribute to holders of record.
-- [ ] **3.14** gamma: wire `scheduledTask` so the coupon fires on a timer. this is an
-      extra-points line in brief §6 and it is nearly free once the coupon works.
+- [x] **3.14 CUT, see D13.** `scheduledTask` is an internal EVM task queue, not the hedera
+      schedule service. the extra-points line is dropped and not claimed. cutting this also
+      buys back hours that block D now needs.
 - [ ] **3.15** argus records. iris captures.
 - [ ] **G3 — needs hao. a submittable hedera entry exists at this point.**
       from here everything is upside and i will not risk 1 to 3 to reach it.
@@ -178,32 +230,86 @@ calendar is indicative. gates are not.
 - [ ] **3.17** hercules: **the lender view and agent view split.** the agent sees the inputs.
       the lender sees only the haircut, with the input fields visibly absent. brief §9.3 is
       right that confidentiality is invisible on video. the visible absence is the demo.
-- [ ] **3.18** gamma: `createKpiLinkedRate` on the note.
-- [ ] **3.19** gamma: post the engine's kpi via `addKpiData`, **the rate steps.** ATS owns
-      the mechanism, we feed it.
-- [ ] **3.20** argus records the rate change. iris captures the before and after.
+- [x] **3.18 DELETED, folded into 3.4.** `createKpiLinkedRate` is the issuance call. it
+      could never have been applied to an already-issued note. see D10.
+- [ ] **3.18b** gamma: grant the roles this block needs, each its own transaction:
+      `ROLE_KPI_MANAGER` for `addKpiData` (`facets/kpi/Kpis.sol:41`) and
+      `ROLE_INTEREST_RATE_MANAGER` for the rate setters
+      (`facets/kpiLinkedRate/KpiLinkedRate.sol:54,74`). none of these were in the old plan.
+- [ ] **3.19** gamma: post the engine's kpi via `addKpiData`. **the rate does not step when
+      you call this.** `KpiLinkedRateLib.sol:40-64` computes at a coupon's `fixingDate`, on
+      read. `onlyValidDate` (`KpisModifiers.sol:25`) rejects a future date, a duplicate
+      checkpoint date, or one below the minimum. this block is date arithmetic across
+      `startPeriod`, `reportPeriod`, `fixingDate` and the compressed maturity.
+- [ ] **3.20** argus: **verify by value, not by delta. see D11.** the gate is that the new
+      rate equals `_getRateFromImpact(impact, kpiData)` for the value we posted **and is not
+      equal to** `previousRate + missedPenalty`. a rate that moved via the missed-report path
+      looks identical on screen and in the mirror node, and claiming our kpi caused it would
+      be a false causal claim on video, checkable from source in five minutes.
+      iris captures before and after only once argus has confirmed which path fired.
 - [ ] **G4a** hermes signs off.
+
+**block D is the block that overruns, not block E.** it is the date choreography, and it got
+heavier when the role grants and the value check were counted.
 
 ### block E. collateral hold. fri 11 sep to sat 12 sep
 
 strongest single shot on video.
 
-- [ ] **3.21** gamma: `createHoldByPartition`, note holder pledges, **engine named as
-      `escrow`.** the third party who decides the outcome is the confidential computation.
+**two holds, not one.** release and execute are mutually exclusive outcomes of the same
+hold. the old plan did 3.23 then 3.24 and would have found the hold gone. one extra
+signature, and the video gets better: the engine choosing differently on two identical
+instruments.
+
+**scope cut, see D15.** we call three of the six verbs. `createHoldFrom`, `controllerCreate`
+and `protectedCreate` demonstrate nothing plain create does not, and `protectedCreate` needs
+EIP-712 signature assembly (`Hold.ts:106-131`) that would eat two hours. athena has mapped
+all six for the writeup. gamma calls three.
+
+- [ ] **3.21** gamma: **two** `createHoldByPartition` calls, both with `escrow` =
+      `0.0.10445014` and **`to` = the lender**. pinning `to` at creation
+      (`HoldStorageWrapper.sol:1086-1088`) means the escrow's only remaining choice is
+      release versus execute, which is exactly the decision we claim the engine makes. that
+      is a stronger writeup sentence than "the engine is the escrow".
+      **watch the expiry.** `_validateExecuteHold` reverts `HoldExpirationReached`, so a
+      short demo expiry kills the money shot.
 - [ ] **3.22** hercules: lender advances cash at the engine's haircut, in the console.
-- [ ] **3.23** gamma: `releaseHoldByPartition` on the repayment path.
-- [ ] **3.24** gamma: **`executeHoldByPartition` on default.** collateral moves to the
-      lender, driven by a number the lender never saw. this is the money shot.
-- [ ] **3.25** gamma: verify the `HoldDetails` trap from CLAUDE.md §2. the constructor takes
-      `executionTimeStamp` and assigns it to `expirationTimeStamp`. **check which value
-      actually returns before building any maturity countdown on it.** if it is genuinely
-      wrong this is our upstream PR candidate and the feedback section writes itself.
+      off-chain, tracked in the console only. zeus has already drawn it that way.
+- [ ] **3.23** gamma: `releaseHoldByPartition` on hold #1, the repayment path.
+- [ ] **3.24** gamma: **`executeHoldByPartition` on hold #2**, the default path. collateral
+      moves to the lender, driven by a number the lender never saw. the money shot.
+      **signer must be the engine account.** the escrow check is on-chain only and not
+      pre-validated by the sdk, so a wrong signer reverts `IsNotEscrow` live. confirm the
+      wallet is on `0.0.10445014` before recording.
+- [x] **3.25 CLOSED, see D12.** the `HoldDetails` timestamp trap is not a bug. apollo and
+      athena verified independently: the constructor param is misnamed but the only call site
+      passes the right value and the struct carries one timestamp, so no swap is possible.
+      demoted to a naming nit. **F2 is the upstream candidate**, not this.
 - [ ] **3.26** argus records every hold transaction. iris captures 3.24 first and best.
+- [ ] **3.26b** **decision pending: put a hash of the engine's output payload into
+      `Hold.data`** (`HoldStorageWrapper.sol:69`, emitted in `HeldByPartition` at
+      `HoldByPartition.sol:65`). apollo's proposal, roughly 30 minutes. it gives the hold an
+      on-chain commitment to the exact haircut computation, readable on hashscan, and turns
+      "a human typed a number" into "the hold commits to the engine output and only the
+      engine can act on it". **not decided. hermes decides at G4 with the real sdk surface
+      in hand, and tells hao before it ships**, since it changes what the architecture
+      diagram may honestly draw.
 - [ ] **G4** hermes signs off.
 
-### block F. CRE confidential workflow. sat 12 sep. **hard 4 hour timebox**
+### block F. CRE confidential workflow. **now runs AFTER block G. see D15.**
+**hard 4 hour timebox**
 
-do not start until every gate above is green.
+**reordered.** the plan had CRE on saturday and the submission artifacts after it. chronos'
+own charter argues against that: "the cost of overrunning is the video, the README and the
+writeups, which are downstream of block F." that is an argument for reordering, not for a
+tighter timebox.
+
+so: block G first. video, README and the two hedera writeups drafted against the local
+engine. **then** open the CRE timebox. if it lands, add forty seconds to the video and the
+third writeup. if it does not, nothing is downstream and CRE is genuinely expendable rather
+than nominally expendable.
+
+do not start until every gate above is green **and block G is drafted**.
 
 - [ ] **3.27** athena: read the CRE confidential workflows templates and bootcamp. cite the
       exact `handlerInTee` registration signature. no guessing.
