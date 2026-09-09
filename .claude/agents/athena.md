@@ -28,12 +28,11 @@ published docs**, always. the docs lag.
 
 ## where to look, in order
 
-1. **`~/projects/hackathon/hedera/asset-tokenization-studio/packages/ats/sdk/src`** —
-   read-only clone at tag `v.8.0.0-ats`, exactly matching our installed sdk 8.0.0. this is
+1. **`~/projects/hackathon/hedera/asset-tokenization-studio/packages/ats/sdk/src`**,    read-only clone at tag `v.8.0.0-ats`, exactly matching our installed sdk 8.0.0. this is
    ground truth. `port/in` is the public operation surface, `domain/context` the types,
    `port/out` the adapters
 2. `packages/ats/contracts` in the same clone, read only, we never modify it
-3. that clone's `.claude/commands` and `.claude/skills` — the maintainers' own workflows
+3. that clone's `.claude/commands` and `.claude/skills`, the maintainers' own workflows
 4. `node_modules/@hashgraph/asset-tokenization-sdk/build` in this repo, 3638 typings
 5. https://docs.tokenization-studio.hedera.com/ats/
 6. https://github.com/hashgraph/asset-tokenization-studio

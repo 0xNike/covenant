@@ -70,9 +70,28 @@ haircuts are ~2% and standardised. There is no interesting problem there.
 
 We moved to an asset where **the haircut is the negotiation** and its input is confidential.
 That produces the property most hackathon privacy projects lack: **the confidential compute
-is load-bearing, not decorative.** If a judge asks "why not just have the agent bank compute
-this," the answer is that the lender is not entitled to the data and the agent has an
-incentive to shade the number. There is no non-cryptographic version.
+is load-bearing, not decorative.**
+
+State the claim precisely, because the loose version does not survive one follow-up question.
+
+The enclave lets a function the lender and borrower agree in advance be run on data only one
+side is entitled to see, and lets the lender check that the published code is what ran.
+**It replaces trust in execution with attestation. It does not touch trust in the inputs.**
+The borrower supplies revenue and EBITDA, and a borrower's incentive to inflate them is
+larger and more direct than an agent bank's incentive to shade a haircut. So an enclave alone
+does not remove trust from this arrangement; it relocates it, to the one party with the
+clearest motive to misreport.
+
+That is not a gap we are papering over. It is the boundary of what this primitive does, and
+the production answer sits just past it: auditor-signed financials, or an authenticated
+accounting API verified inside the enclave before the computation runs. Chainlink lists
+privacy-preserving access to authenticated Web2 APIs, which is the shape of that answer. We
+name it; we do not build it.
+
+Today the lender gets neither guarantee. It gets a number from an agent bank, with no way to
+check the execution or the inputs. We remove one of those two unknowns and say exactly which.
+A trusted third party could compute the same haircut, but then the lender trusts that party's
+execution *and* its confidentiality. Attestation is the difference, and it is a real one.
 
 Second differentiator: `createKpiLinkedRate` and `addKpiData` are first-class ATS methods
 that almost nobody will notice. Feeding a confidential computation into a native ATS
@@ -91,7 +110,8 @@ Do not rebuild any of this.
   controllerCreate, protectedCreate, release, reclaim, execute.
 - **KYC and external KYC list management** — the compliance demo.
 - **Coupon, dividend, interestRates, kpis** — the distribution and repricing legs.
-- **scheduledTask** — native scheduled transactions.
+- **scheduledTask** — an internal EVM task queue, drained lazily by the next
+  state-mutating call. **Not the Hedera Schedule Service.** See DECISIONS.md D13.
 - **role** — issuer, controller and escrow permissions.
 - **`updateMaturityDate`** — lets us compress a 3-year lifecycle into a 5-minute demo.
 
@@ -107,12 +127,16 @@ Gates (all mandatory):
 - [ ] Public GitHub repo, contracts verified on HashScan where applicable
 - [ ] Demo video ≤5 min showing **issuance, configuration, and at least one lifecycle op**
 
-Extra points (targeting 5 of 6):
+Extra points (targeting 4 of 6):
 - [x] Compliance controls — KYC grants, blocked transfer, permitted transfer
 - [x] Coupon distributions
 - [x] Oracle / NAV — the confidential haircut and KPI engine
-- [x] Scheduled Transactions — coupon on a timer via `scheduledTask`
 - [x] Contributions upstream to ATS
+- [ ] Scheduled Transactions — **dropped, and not claimed.** ATS `scheduledTask` is an
+      internal EVM task queue, not the Hedera Schedule Service. Six greps across the
+      contracts tree return zero hits, and the SDK's entire port surface is two read
+      queries. Claiming this line would be disprovable in thirty seconds and would
+      contaminate the four above it. See DECISIONS.md D13.
 - [ ] Secondary market — **deliberately skipped.** If the engine lands early, add a
       *periodic auction*, never an order book. Illiquid instruments clear by auction.
 
@@ -176,10 +200,11 @@ CRE CLI if that is what we shipped. Honest and still qualifying.
 
 A judge who spots a hole we already flagged reads it as rigour. Address these in the writeup.
 
-1. **Input integrity.** A TEE proves the computation was honest, not that the inputs were.
-   The production answer is auditor-signed financials or an authenticated accounting API
-   verified inside the enclave before computing. Chainlink lists privacy-preserving access to
-   authenticated Web2 APIs. We name the gap; we do not build it.
+1. **Input integrity.** Folded into §4 rather than left here as a separate caveat, so the
+   claim and its boundary read as one thought instead of an assertion followed by a
+   retraction. A TEE proves the computation was honest, not that the inputs were. §4 states
+   this as part of what the primitive *is*, which is the honest framing and the one that
+   survives a judge's follow-up question.
 2. **Illiquid seizure.** Seizing a private credit note leaves the lender holding an illiquid
    claim. This is why the framing is NAV-based lending, where the lender expects to work out
    the asset, not flip it.

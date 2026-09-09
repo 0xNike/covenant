@@ -157,3 +157,214 @@ with an error that points nowhere near the cause. worth an entry so nobody "fixe
 
 `.gitignore` line 34 is `.env*`, which would have swallowed the template too, so line 35 now
 negates it with `!.env.example`. `.env.local` stays ignored.
+
+---
+
+## D9. the upstream PR needs GPG set up before commit one, not after
+
+athena read the maintainers' actual contribution process. findings in
+`specs/03-upstream-workflows.md`, all cited. the operative constraints:
+
+- **branch off `develop`, not `main`.** `CONTRIBUTING.md:214`, and
+  `.github/workflows/000-flow-changeset-check.yaml:5-9` only triggers on
+  `develop`/`development`
+- **every commit needs DCO sign-off AND a GPG signature.** the `pre-push` hook at
+  `.husky/pre-push:35-56` and `:131-139` rejects the push if any commit in the range lacks
+  `Signed-off-by:` or has git `%G?` status `N`. this is a hard block, not a warning
+- their setup script is `.github/scripts/setup-git.sh`, referenced at `CONTRIBUTING.md:119`
+- a PR needs at least one assignee or CI fails
+- a changeset is required unless a bypass label (`no-changeset`, `docs-only`, `chore`,
+  `hotfix`) applies
+- new non-test `.ts`/`.sol` files need an `// SPDX-License-Identifier: Apache-2.0` header,
+  enforced by lint-staged via `check-license.js`
+- upstream pins node `24.15.0` in `.nvmrc`
+
+**decision:** rudolph configures signing **before** writing the first commit intended for
+upstream, on a branch cut from their `develop`.
+
+**why it cannot wait:** retrofitting sign-off and signatures onto existing commits needs an
+interactive `git rebase -i` per `CONTRIBUTING.md:151-161`. interactive rebase is unavailable
+in this environment, and history rewriting needs hao's approval under `CLAUDE.md` §1 anyway.
+so an unsigned upstream branch on sunday night is not a small fix, it is a dead branch.
+
+**this does not affect our own repo.** covenant's commits need no GPG. only the upstream
+branch does.
+
+**and one thing that is simply absent:** `docs/references/proposals` does not exist and never
+has, confirmed against `git log --all`. `CLAUDE.md` §6 named it as the destination for an
+enhancement proposal, and `CONTRIBUTING.md:260` and their own `.claude/commands` both
+reference it as though populated. there is no existing proposal to pattern-match against.
+§6 corrected. if we file a proposal we are setting the template, not following one.
+
+---
+
+## D10. apollo halted block A and was right. we issue on config 4, not config 2
+
+**apollo's first review returned `PROCEED WITH CHANGES` with a halt on tasks 3.1 and 3.4.**
+hermes verified the load-bearing claims independently before accepting them, per
+`CLAUDE.md` §3. all three confirmed.
+
+**the halt.** `PROJECT_BRIEF.md` §10 and our committed `.env.example` both pinned
+`BOND_CONFIG_ID = 0x...02`. `packages/ats/contracts/scripts/domain/constants.ts:25-49`
+defines four bond-family configs, not two:
+
+```
+0x..01 equity              0x..02 bond variable rate   <- what the plan had
+0x..03 bond fixed rate     0x..04 bond KPI-linked rate <- what the plan needs
+```
+
+config 2's facet list in `domain/bond/createConfiguration.ts` is `CouponFacet` and
+`InterestRateFacet`. **no `KpisFacet`, no `KpiLinkedRateFacet`.** config 4's list carries
+both, plus `HoldByPartitionFacet`, `KycFacet`, `MaturityFacet` and
+`ProceedRecipientsKpiLinkedRateFacet`.
+
+issuing on config 2 means `addKpiData` hits an unregistered selector at block D. recovery is
+re-issuing and redoing kyc, coupon and hold. that is the build lost at hour 20, discovered
+on friday.
+
+hermes verified by eth_call against the live resolver `0.0.9212226`, not from source alone:
+config 2 latest version 1, **config 4 latest version 1**, 8 configurations registered.
+
+**second half of the halt, equally important.** `createKpiLinkedRate` is not a
+post-issuance configuration call. `port/in/bond/Bond.ts:227` takes
+`CreateBondKpiLinkedRateRequest` and builds a `SecurityProps` with name, symbol, isin,
+decimals, `clearingActive`, `internalKycActivated` and maxSupply, returning a new security.
+**it is the issuance call.** task 3.18, "gamma: `createKpiLinkedRate` on the note" in block D,
+could never have worked against an already-issued note.
+
+**decision:** block A issues via `Bond.createKpiLinkedRate` against config `0x...04`.
+task 3.18 is deleted, folded into 3.4. `.env.example` corrected.
+
+**three issuance flags now pinned, because each is set once and silently kills a later block:**
+
+- `clearingActive: false`. `HoldByPartition.sol:50` carries `onlyClearingDisabled`. clearing
+  on means block E is dead and unrecoverable
+- `internalKycActivated: true`. otherwise block B's blocked transfer does not block and the
+  compliance demo is a lie
+- `proceedRecipientsIds` must contain at least one project address, or KPI data has nowhere
+  to attach
+
+none of the three appeared anywhere in the plan. they are the highest-consequence,
+lowest-visibility decisions in the build and they are made in one call at hour two.
+
+---
+
+## D11. the rate-step claim needs a value check, not a delta check
+
+`domain/asset/KpiLinkedRateLib.sol:40-64` computes the coupon rate at a coupon's
+`fixingDate`, not when `addKpiData` is called. if no KPI report is found in the window,
+`:57-60` takes `_getRateWhenNoReport`: `previousRate + missedPenalty`, capped at `maxRate`.
+
+**so the rate moves whether or not our KPI landed.** the plan had argus record "the rate
+changed" and iris capture before and after. a rate that moved via the missed-penalty path
+looks identical on screen and in the mirror node. we would have put a false causal claim on
+video, checkable from source in five minutes.
+
+athena reached the same place independently: the rate changes **only on read, at a coupon's
+`fixingDate`**, and sums KPI values only from addresses registered via `addProceedRecipient`.
+posting `addKpiData` for an unregistered project is **silently ignored**
+(`KpiLinkedRateLib.sol:87-111`).
+
+**decision:** argus's G4 gate is not "the rate changed". it is that the new rate equals
+`_getRateFromImpact(impact, kpiData)` for the value we posted, **and is not equal to**
+`previousRate + missedPenalty`. `missedPenalty` and the baseline are chosen at issuance so
+the two paths give visibly different numbers.
+
+also uncounted in the plan, and each needing its own `Role.grantRole` transaction:
+`ROLE_KPI_MANAGER` for `addKpiData` (`facets/kpi/Kpis.sol:41`),
+`ROLE_INTEREST_RATE_MANAGER` for the rate setters (`facets/kpiLinkedRate/KpiLinkedRate.sol:54,74`),
+and `ROLE_MATURITY_MANAGER` for `updateMaturityDate`, which athena found is **missing from
+the SDK's `SecurityRole` TS enum entirely** and must be passed as a raw hex literal.
+
+`onlyValidDate` (`services/asset/KpisModifiers.sol:25`) rejects a future date, a duplicate
+checkpoint date, or a date below the minimum.
+
+**block D is the block that overruns, not block E.** it is date arithmetic across
+`startPeriod`, `reportPeriod`, `fixingDate` and `updateMaturityDate`, and it just got heavier.
+
+---
+
+## D12. F1 is not a bug. F2 is the upstream candidate
+
+apollo and athena reached this independently, by different routes.
+
+`domain/context/security/Hold.ts:23-48` does name the constructor's first parameter
+`executionTimeStamp` while assigning it to `this.expirationTimeStamp`. but the only call
+site, `port/out/rpc/RPCQueryAdapter.ts:886-894`, passes `hold.expirationTimestamp_`, the
+contract's correctly named field. **the returned value is correct.** athena adds that
+`IHoldTypes.sol:51-58` carries only one timestamp on the struct, so no swap is even possible.
+
+it is a misnamed parameter with zero behavioural effect. a one-line rename.
+
+**decision:** F1 demoted to a naming nit in the writeup's feedback section. **F2 promoted**:
+`RequestAccount.privateKey` at `port/in/request/BaseRequest.ts:9` is a public field consumed
+by nothing, because `SupportedWallets.CLIENT` is commented out at `Wallet.ts:9`. a field that
+invites you to hand the sdk a key it silently ignores is a real developer trap with a
+security shape.
+
+**why this matters more than it looks.** `CLAUDE.md` §2 named F1 as our upstream PR candidate
+and `PROJECT_BRIEF.md` §6 says do not manufacture a friction point. submitting a cosmetic
+rename as an ATS improvement invites a devrel judge to open the file and find exactly that.
+the plan was quietly breaking its own rule. we take the third prize slot only if blocks A
+through E produce a genuine friction point.
+
+---
+
+## D13. two factual overclaims removed from PROJECT_BRIEF.md
+
+both found by **apollo** on its first review, one corroborated independently by **athena**
+while mapping the sdk surface for an unrelated task. hao approved both corrections and
+identified :93 as his own error rather than a misreading.
+
+### :93 and §6. ATS `scheduledTask` is not the Hedera Schedule Service
+
+the brief called it "native scheduled transactions" and claimed the **Scheduled
+Transactions** extra-points line on that basis.
+
+**evidence, re-run by hermes before logging rather than taken from apollo's report.** six
+patterns grepped across `packages/ats/contracts`, `--include="*.sol"`:
+
+```
+IHederaScheduleService                          0 hits
+ScheduleCreate                                  0 hits
+scheduleCreate                                  0 hits
+HederaScheduleService                           0 hits
+0x16b                                           0 hits
+0x000000000000000000000000000000000000016b      0 hits
+```
+
+what it actually is: `domain/orchestrator/ScheduledTasksOps.sol`, an internal EVM task queue
+drained lazily by the next state-mutating call. athena, tracing the sdk for a different
+question, found the **entire** `port/in/scheduledTask` surface is two read queries,
+`scheduledCouponListingCount` and `getScheduledCouponListing`
+(`ScheduledCouponListing.ts:27,38`). there is no sdk write call that triggers a scheduled
+coupon at all.
+
+**decision:** the extra-points line is **dropped and not claimed.** four of six stands:
+compliance controls, coupon distributions, oracle/NAV, upstream contribution. task 3.14 is
+cut from block C.
+
+**why dropping beats hedging:** a hedera judge disproves this in thirty seconds, and a claim
+caught false contaminates the four that are true. we lose one line and keep the credibility
+of the rest. cutting it also buys back block C hours that D11 says block D is going to need.
+
+### :75. "There is no non-cryptographic version" removed
+
+the sentence inverts under one question. the enclave attests `f(x)`, but `x` comes from the
+borrower, and a borrower's incentive to inflate revenue and EBITDA is larger and more direct
+than an agent bank's incentive to shade a haircut. so the arrangement as built does not
+remove trust, it relocates it to the party with the clearest motive to misreport. naming
+input integrity separately in §9.1 scoped the weakness but could not repair an **absolute**
+claim that depended on its absence.
+
+**decision:** §4 now states the narrower claim, which is true and still a differentiator:
+the enclave replaces trust in execution with attestation, does not touch trust in the inputs,
+and the production path for that is auditor-signed financials or an authenticated accounting
+API verified inside the enclave.
+
+per hao, **§9.1 is folded into §4** rather than left as a separate caveat, so the limitation
+and the claim read as one thought instead of an assertion followed by a retraction. §9.1 now
+points at §4 rather than repeating it.
+
+**this is now the load-bearing paragraph of the submission.** zeus writes the writeups from
+§4 as it now stands, not from memory of the old version.

@@ -43,8 +43,8 @@ immediately.
 
 ## the upstream PR
 
-if a genuine friction point emerges from our own build — the `HoldDetails`
-`executionTimeStamp` to `expirationTimeStamp` assignment is the current candidate — prepare a
+if a genuine friction point emerges from our own build, the `HoldDetails`
+`executionTimeStamp` to `expirationTimeStamp` assignment is the current candidate, prepare a
 PR to `hashgraph/asset-tokenization-studio`. it goes in `docs/references/proposals` if it is
 an enhancement proposal. an unmerged PR still qualifies for the prize.
 

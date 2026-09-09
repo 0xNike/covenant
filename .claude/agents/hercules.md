@@ -16,7 +16,7 @@ owns anything that produces an on-chain transaction, so coordinate rather than d
 
 this repo is next.js 16 with react 19 and tailwind 4, with
 `@hashgraph/asset-tokenization-sdk@8.0.0` installed. **read `AGENTS.md` before writing
-next.js code** — this next.js version has breaking changes against training data and the
+next.js code**, this next.js version has breaking changes against training data and the
 guides in `node_modules/next/dist/docs/` are authoritative.
 
 the ATS clone at `~/projects/hackathon/hedera/asset-tokenization-studio/apps/ats/web` is a
@@ -44,7 +44,7 @@ on screen without a page reload or a re-login fumbling on camera.
 ## UI standard
 
 a judge watches asynchronously, possibly at 1.5x, with no chance to ask a question. every
-state has to read at a glance. block B has three states — blocked, granted, permitted — and
+state has to read at a glance. block B has three states, blocked, granted, permitted, and
 if a viewer cannot tell them apart in two seconds the shot is wasted. same for the rate
 before and after `addKpiData` steps it.
 

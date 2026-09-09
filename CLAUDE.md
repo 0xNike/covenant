@@ -239,7 +239,9 @@ apps/ats/web               React 18 frontend — pattern reference only, we do n
 apps/ats/web/.env.example  the template for our own .env
 .claude/commands           maintainers' own workflows — read these
 .claude/skills             solidity-natspec checker
-docs/references/proposals  where an enhancement proposal PR would go
+docs/references/proposals  DOES NOT EXIST. never has, per git log --all. both
+                           CONTRIBUTING.md:260 and .claude/commands reference it as if
+                           populated. aspirational, not practice. see specs/03.
 ```
 
 **`~/projects/hackathon/hedera/covenant` — this repo, where our code lives.**

@@ -72,7 +72,7 @@ survives context loss and lands in the repo for eligibility.
       the published sdk ships 3638 typings under
       `node_modules/@hashgraph/asset-tokenization-sdk/build`, so this is answerable locally.
       output to `specs/02-sdk-surface.md`.
-- [~] **1.5 running.** athena's second task: read the upstream `.claude/commands` and `.claude/skills`
+- [x] **1.5 done.** athena's second task: read the upstream `.claude/commands` and `.claude/skills`
       in the ATS repo once the reference clone exists (D1). those are the maintainers' own
       workflows. output to `specs/03-upstream-workflows.md`.
 
@@ -233,7 +233,10 @@ do not start until every gate above is green.
       workaround, what is missing. name our own weaknesses from brief §9 before a judge
       finds them. input integrity, illiquid seizure, invisible confidentiality.
 - [ ] **3.35** rudolph: prepare the upstream PR to `hashgraph/asset-tokenization-studio`.
-      **does not open it. needs hao.**
+      **branch off their `develop`, not `main`.** DCO sign-off and GPG signature on every
+      commit from the first one, see D9 and H9. PR needs an assignee. changeset required
+      unless a bypass label applies. full checklist at the top of
+      `specs/03-upstream-workflows.md`. **prepare only. hao opens it.**
 - [ ] **3.36** apollo: final pass. every claim against a finance-literate judge, every
       artifact against §8. this is the last chance, judging is asynchronous and there is
       no Q&A.
@@ -259,6 +262,7 @@ no agent can do these and several block everything downstream.
 | H5 | ~~repo layout~~ **decided**, see D1 | nothing |
 | H6 | G3, G5, G6 sign-off | phase transitions |
 | H7 | open the upstream PR | 3.35 |
+| H9 | **new.** GPG key generated and configured, before rudolph's first upstream-bound commit. their `pre-push` hook hard-rejects any commit lacking DCO sign-off or a GPG signature (`.husky/pre-push:131-139`). retrofitting needs `rebase -i`, which is unavailable here. their setup script is `.github/scripts/setup-git.sh`. **does not affect covenant's own commits** | 3.35, and only 3.35 |
 | H8 | submit to ETHGlobal | everything |
 
 ---
