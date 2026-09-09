@@ -11,7 +11,7 @@ git does not track empty directories, which is why this file exists.
 | file | what | owner |
 |---|---|---|
 | `00-mission.md` | the shared brief every agent reads first. **written** | hermes |
-| `01-agent-charters.md` | per-agent scope, first tasks, hand-back rules | hermes |
+| ~~`01-agent-charters.md`~~ | **cut, see DECISIONS.md D7.** the charters are `.claude/agents/*.md`, which are committed and are what the runtime loads | |
 | `02-sdk-surface.md` | ATS sdk operation surface, cited to file and line | athena |
 | `03-upstream-workflows.md` | the ATS maintainers' own `.claude` workflows | athena |
 

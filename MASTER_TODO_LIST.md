@@ -41,7 +41,7 @@ as anything a tool can invoke. formation means writing them.
       untracked. spec files and prompts in the repo are an ETHGlobal eligibility condition,
       not housekeeping.
 
-- [ ] **0.8 blocked on hao. restart the claude code session.** claude code reads
+- [x] **0.8 done, 10 sep.** session restarted, all nine agents resolve. claude code reads
       `.claude/agents/` **at session start**, so the nine definitions written this session do
       not resolve yet. verified: `Agent(subagent_type: "rudolph", ...)` returned
       `Agent type 'rudolph' not found`. frontmatter on all nine parses clean and names match
@@ -59,20 +59,20 @@ decisions, evidence, specs and the nine agent definitions. **partially met.**
 each agent gets a written brief before its first task. not a chat message, a file, so it
 survives context loss and lands in the repo for eligibility.
 
-- [ ] **1.1** write `specs/00-mission.md`. the shared brief every agent reads first: what
-      covenant is, the ship order, the three prizes, the vocabulary rules from §8, the
-      "evidence or it didn't happen" rule.
-- [ ] **1.2** write `specs/01-agent-charters.md`. per-agent scope, what each may decide
-      alone, what it hands back to hermes, its first task.
-- [ ] **1.3** apollo reviews `specs/00` and `01` and this file before any build starts.
+- [x] **1.1** `specs/00-mission.md` written. the shared brief every agent reads first.
+      every one of the nine definitions opens by pointing at it.
+- [x] **1.2 cut. see D7.** `.claude/agents/*.md` are the charters and the prompts, they are
+      committed, and they are what the runtime loads. a second document describing the same
+      nine agents would drift.
+- [~] **1.3 running.** apollo reviews `specs/00` and `01` and this file before any build starts.
       apollo has standing halt authority. if it halts, i fix the plan or escalate to you.
-- [ ] **1.4** athena's first task, run in parallel with 1.3, no dependency on it:
+- [~] **1.4 running.** athena's first task, run in parallel with 1.3, no dependency on it:
       map the sdk operation surface for issuance, kyc, coupon, `addKpiData`,
       `createKpiLinkedRate`, and all six hold verbs. cite `.d.ts` paths and line numbers.
       the published sdk ships 3638 typings under
       `node_modules/@hashgraph/asset-tokenization-sdk/build`, so this is answerable locally.
       output to `specs/02-sdk-surface.md`.
-- [ ] **1.5** athena's second task: read the upstream `.claude/commands` and `.claude/skills`
+- [~] **1.5 running.** athena's second task: read the upstream `.claude/commands` and `.claude/skills`
       in the ATS repo once the reference clone exists (D1). those are the maintainers' own
       workflows. output to `specs/03-upstream-workflows.md`.
 
@@ -128,9 +128,10 @@ calendar is indicative. gates are not.
 
 **nothing else happens until this works.** if it breaks, this is the whole block.
 
-- [ ] **3.1** `.env` from the brief §10 facts. resolver `0.0.9212226`, factory
-      `0.0.9213391`, bond config `0x...0002`, hashio rpc, mirror node. nothing hardcoded.
-- [ ] **3.2** *hao action.* **issuer done:** `0.0.10424387`, evm
+- [x] **3.1** `.env.example` committed, `.env.local` created and ignored. network, resolver,
+      factory, both config ids, hashscan base, and all four accounts. **`NEXT_PUBLIC_`
+      prefixes, not `REACT_APP_`**, see D8. no key material, by design.
+- [x] **3.2** *hao action, done.* **all four funded and verified:** issuer `0.0.10424387`, evm
       `0x56a45ef1d79a3a6fd6cfa6b833612705d2edc742`, 974.76 HBAR, ECDSA_SECP256K1, verified on
       mirror node 10 sep. three more accounts in progress for holder, lender and escrow.
       **each must be ECDSA secp256k1, not ED25519.** MetaMask cannot hold an ED25519 key, so

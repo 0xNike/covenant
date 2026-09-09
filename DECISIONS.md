@@ -122,3 +122,38 @@ fact. apollo and argus exist to stop us shipping a claim that does not hold, and
 only failure mode that cannot be recovered from.
 
 approved by hao, 10 sep 2026.
+
+---
+
+## D7. `specs/01-agent-charters.md` cut as redundant
+
+the plan had phase 0 write agent definitions and phase 1 write a separate charter document.
+that was written before the definitions existed. `.claude/agents/*.md` **are** the charters
+and **are** the prompts, they are committed, and they are what the runtime actually loads.
+
+**decision:** cut `specs/01-agent-charters.md`. `specs/README.md` points at `.claude/agents/`
+instead.
+
+**why:** two documents describing the same nine agents would drift apart within a day, and
+the one that drifted would be the one nobody reads. the eligibility condition is that spec
+files and prompts are committed, which `.claude/agents/` satisfies directly.
+
+scope cut down, hermes decides alone per `CLAUDE.md` §1.
+
+---
+
+## D8. `NEXT_PUBLIC_` not `REACT_APP_`
+
+the ATS reference app at `apps/ats/web` is create-react-app and uses `REACT_APP_` prefixes.
+`PROJECT_BRIEF.md` §10 quotes those names. this repo is next.js 16, where only
+`NEXT_PUBLIC_`-prefixed vars reach the browser and `REACT_APP_` ones are silently undefined
+at runtime.
+
+**decision:** our `.env.example` uses `NEXT_PUBLIC_`. the values are unchanged from the
+brief, only the prefixes differ.
+
+**why it matters:** a silently undefined resolver address fails at the first contract call
+with an error that points nowhere near the cause. worth an entry so nobody "fixes" it back.
+
+`.gitignore` line 34 is `.env*`, which would have swallowed the template too, so line 35 now
+negates it with `!.env.example`. `.env.local` stays ignored.
