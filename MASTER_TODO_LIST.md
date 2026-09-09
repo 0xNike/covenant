@@ -37,13 +37,20 @@ as anything a tool can invoke. formation means writing them.
       where our code lives. see D1, approved.
 - [x] **0.6** create `DECISIONS.md`, `EVIDENCE.md`, `specs/`. seed DECISIONS.md with D1
       through D5 below.
-- [ ] **0.7** `git add PROJECT_BRIEF.md` and commit the whole governance set. it is currently
+- [x] **0.7** `git add PROJECT_BRIEF.md` and commit the whole governance set. it is currently
       untracked. spec files and prompts in the repo are an ETHGlobal eligibility condition,
       not housekeeping.
 
-**definition of done for phase 0:** `Agent(subagent_type: "athena", ...)` resolves and
-returns a cited answer. one commit exists containing brief, claude.md, decisions, evidence,
-specs and agent definitions.
+- [ ] **0.8 blocked on hao. restart the claude code session.** claude code reads
+      `.claude/agents/` **at session start**, so the nine definitions written this session do
+      not resolve yet. verified: `Agent(subagent_type: "rudolph", ...)` returned
+      `Agent type 'rudolph' not found`. frontmatter on all nine parses clean and names match
+      filenames, so this is a loader lifecycle issue, not a content bug. nothing else in
+      phase 0 or 1 is affected, and no agent work can start until it is done.
+
+**definition of done for phase 0:** commit `9337f81` exists containing brief, claude.md,
+decisions, evidence, specs and the nine agent definitions. **partially met.**
+`Agent(subagent_type: "athena", ...)` resolving is deferred to 0.8, after a session restart.
 
 ---
 
