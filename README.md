@@ -1,36 +1,148 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# covenant
 
-## Getting Started
+a tokenised private credit note whose interest rate and collateral haircut are set by a
+confidential compute engine that reads the borrower's private financials, so a cash lender
+can price a risk it is not permitted to inspect.
 
-First, run the development server:
+built on the Hedera Asset Tokenization Studio (ATS), for ETHGlobal ETHOnline 2026.
 
-```bash
+---
+
+## what this is
+
+a private credit fund lends to a mid-sized company and sells participation in that loan to
+holders in smaller slices. the note holder wants liquidity without waiting out the note's
+term. a cash lender will advance against the note as collateral, but has no right to see the
+borrower's books, so it cannot price the haircut itself. covenant puts the borrower's
+revenue, EBITDA and leverage into a hardware-isolated enclave. only two things leave it: a
+covenant pass or fail, and a haircut. the lender never sees the inputs and can still check
+that the computation ran the published code. the note itself, its compliance gate, its
+coupon and its collateral hold run on the ATS diamond on Hedera testnet, through the
+pre-deployed resolver and factory. we write no Solidity and deploy no contracts.
+
+what this replaces trust in, and what it does not, is the load-bearing paragraph of this
+project. read `PROJECT_BRIEF.md` §4 before assuming more than the paragraph above claims.
+
+---
+
+## status
+
+**honest, as of 10 sep 2026. this section is updated as gates go green and nothing here is
+written ahead of the evidence.** the table below mirrors `EVIDENCE.md` gate by gate. update
+it there first, then here, never the other way round.
+
+no transaction has landed on Hedera testnet yet. what exists today is governance, planning
+and configuration: the nine agent definitions in `.claude/agents/`, `PROJECT_BRIEF.md`,
+`DECISIONS.md`, the sdk operation surface mapped in `specs/02-sdk-surface.md`, the `.env.example`
+template wired to real testnet accounts and the deployed ATS infrastructure, and the
+architecture diagram at `docs/architecture.md`. the application code in `app/` is still the
+unmodified `create-next-app` scaffold. no covenant-specific console screen exists yet.
+
+| gate | proves | status |
+|---|---|---|
+| G1 | bond issued on Hedera testnet, visible on HashScan | not started |
+| G2 | transfer blocked by KYC, grant issued, same transfer succeeds | not started |
+| G3 | coupon distributed to holders of record. **first submittable entry** | not started |
+| G4 | `addKpiData` posted, coupon rate steps on a coupon's `fixingDate`, hold created and executed | not started |
+| G5 | confidential engine running behind a CRE `handlerInTee`, or an honestly-labelled CRE CLI simulation | not started |
+| G6 | video, README, three per-prize writeups, evidence, upstream PR prepared | not started |
+
+nothing below G3 is a complete submission on its own. G1 through G3 together are.
+
+---
+
+## what runs today
+
+this repository is a next.js 16 / react 19 app with the ATS sdk (`@hashgraph/asset-tokenization-sdk@8.0.0`)
+as an npm dependency. right now `npm run dev` serves the default next.js scaffold, not a
+covenant screen. the instructions below are for running what exists, and will describe more
+as the build order in `MASTER_TODO_LIST.md` moves through its gates.
+
+```
+node   >= 20.19.4
+npm    >= 10.9.0
+
+npm install
+cp .env.example .env.local   # every value is already correct, nothing to fill in
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.example` is the committed template and the source of truth for every address this
+project uses. it sets the Hedera testnet network, the deployed ATS resolver and factory, the
+bond config id, and four testnet accounts, one per party in the flow:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| role | account | does |
+|---|---|---|
+| issuer / agent | `0.0.10424387` | issues the note, grants KYC, sets and distributes the coupon, posts `addKpiData` |
+| note holder | `0.0.10444395` | receives the note, is the blocked-then-permitted transfer target, pledges the collateral hold |
+| lender | `0.0.10444404` | advances cash at the engine's haircut, receives collateral if the hold is executed |
+| engine, as `Hold.escrow` | `0.0.10445014` | the only account authorised to release or execute a hold. deliberately not the issuer's account, see `DECISIONS.md` D5 |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**there is no local-key signer.** `SupportedWallets.CLIENT` is disabled in ATS sdk v8, so
+every transaction is signed by a human clicking a browser wallet (MetaMask) on the relevant
+account, not by a script holding a key. no private key exists in this repository, in
+`.env.local`, or in any agent's context, by design. see `DECISIONS.md` D3.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## what is real and what is not
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **we deploy no contracts.** we issue and operate a note against the pre-deployed ATS
+  business logic resolver `0.0.9212226` and factory `0.0.9213391`, both already on Hedera
+  testnet before this project started.
+- **there is no on-chain attestation of the enclave.** the confidential engine's output,
+  the covenant verdict, the KPI value, and the haircut, reaches the chain only because a
+  human reads it off a screen and signs a transaction. nothing on Hedera verifies that the
+  published computation is what ran, or that the value a human typed in matches its output.
+  see `docs/architecture.md` for exactly where that boundary sits and what it deliberately
+  does not draw.
+- **the confidential engine runs today as a plain local service**, not inside an enclave.
+  the target is to run the same computation behind a Chainlink CRE `handlerInTee`, a
+  hardware-isolated, TEE-based enclave. if that does not land in the build's timebox, the
+  fallback is a CRE CLI simulation of the same handler.
+  whichever ships, `EVIDENCE.md` and the Chainlink writeup say so plainly rather than
+  implying a live deployment that did not happen.
+- **ATS is ERC-1400 compliant with partial ERC-3643 support.** it is not a full ERC-3643
+  implementation. we do not claim otherwise anywhere in this project.
+- **the ATS `scheduledTask` facet is an internal EVM task queue**, drained lazily by the
+  next state-mutating call. it is not the Hedera Schedule Service. we do not claim the
+  Scheduled Transactions extra-points line for this reason. see `DECISIONS.md` D13 and D14.
+- **the coupon payment and the lender's cash advance are both off-chain**, tracked in the
+  console rather than moved by an ATS transaction. `setCoupon` records terms on-chain and
+  the holder list is read from the chain; paying the holders is not itself a transaction.
+  the collateral hold moves the note, not cash.
+- **the lender-view / agent-view split that makes confidentiality visible on screen is
+  planned, not built.** it is the intended demo of the boundary described above, and its
+  status belongs in the table above once it exists, not here.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## evidence
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+every factual claim in this project traces to a transaction id and a HashScan link in
+[`EVIDENCE.md`](./EVIDENCE.md). if a claim has no line there, it is not made. `EVIDENCE.md`
+is owned by the QA role in this build and is independently re-verified against Hedera's
+mirror node and HashScan, not taken on trust from whichever role built the flow.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## architecture
+
+[`docs/architecture.md`](./docs/architecture.md) is the diagram of record. it answers one
+question: what enters the confidential engine, what leaves it, and who can see each. it also
+draws, on purpose, everywhere the diagram does not imply an on-chain guarantee that does not
+exist.
+
+---
+
+## more
+
+- [`PROJECT_BRIEF.md`](./PROJECT_BRIEF.md), what is being built and why, including the
+  argument in §4 for why this is not the obvious tokenised-treasury submission, and the
+  weaknesses named against ourselves in §9
+- [`DECISIONS.md`](./DECISIONS.md), every non-obvious call made during the build, with
+  reasoning, and any standing objection logged rather than silently overruled
+- [`MASTER_TODO_LIST.md`](./MASTER_TODO_LIST.md), the build order, the gates, and the
+  current phase
+- [`specs/`](./specs), the spec files and prompts committed as part of this build, including
+  the ATS sdk operation surface mapped to file and line in `specs/02-sdk-surface.md`
