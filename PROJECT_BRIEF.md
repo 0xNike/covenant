@@ -64,10 +64,20 @@ private credit note.
    the deployed resolver and cannot be deployed against by any path, which is our upstream
    bug report. See `BUG.md` B1.
 
-   One consequence worth stating, but never as the lead: the on-chain version would publish
-   the borrower's leverage ratio to a public ledger. In real private credit a covenant
-   compliance certificate goes to lenders under an NDA, not to everyone. The substitute
-   discloses strictly less. That is an observation, not the reason we did it.
+   **Where the confidential boundary actually sits, stated precisely.** The borrower's
+   revenue, EBITDA, total debt and interest expense never leave the engine. Verified: the
+   lender's page and every script it loads were scanned for those values and their
+   variants, with a control scan against the agent view to prove the search works.
+
+   The derived leverage is a different matter. `rateForKpi` is piecewise linear and finer
+   grained than the KPI it consumes, so within the published bounds it is **invertible**.
+   Once `setRate` lands on chain, anyone holding the bounds recovers the leverage from the
+   rate. It is non-invertible only outside the caps, where values clamp.
+
+   So the confidentiality claim is about the **financials, not the KPI**. An on-chain
+   `addKpiData` would have published the same derived leverage. Neither path exposes the
+   underlying statements. We do not claim the substitute discloses less, because it does
+   not.
 
 6. **Collateralise.** The note holder pledges the note via `createHoldByPartition`, naming
    the engine as `escrow`. The lender advances cash at the computed haircut.

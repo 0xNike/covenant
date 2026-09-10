@@ -281,6 +281,61 @@ callers must pass a raw hex literal to `grantRole`.
 
 ---
 
+## B8. `Security.checkISIN` accepts an ISIN the deployed contract rejects
+
+**severity: real friction, and it costs gas to find out.**
+
+### what happens
+
+`CreateBondRequest.validate()` calls `Security.checkISIN`
+(`domain/context/security/Security.ts:186-194`), which returns **zero errors** on any
+12-character non-empty string. it checks length and emptiness only. no digit-check
+validation at all.
+
+the deployed factory enforces one. `Factory.sol:283`'s `onlyValidISIN` modifier calls
+`isinValidator.sol:30-36`'s `_checkChecksum`, a real ISO 6166 Luhn/mod-10 check digit over
+the converted ISIN body. so the sdk waves through an ISIN the contract will not accept, and
+the only way to find that out is to pay gas and get it reverted.
+
+### confirmed against chain, not inferred
+
+the first issuance attempt used isin `XS9999COV001`. sdk validation returned zero errors on
+it. the transaction reverted on chain: selector `0x342c92db`, independently recomputed as
+`keccak256("WrongISINChecksum(string)")[:4]` and matched exactly. reverted transaction
+`0x305fbb1a04946a5c4e18dd98675f0891934b8db699633fba0579e4a345a02a0b`, cost `0.18855433` HBAR
+total. see `EVIDENCE.md`'s friction log for the full mirror-node record and the payer split.
+the reissue five minutes later, with a valid checksum, `XS9999COV006`, is the live token
+reported in `EVIDENCE.md` G1.
+
+### suggested fix
+
+run the same ISO 6166 check digit `isinValidator.sol` runs, client side, inside
+`Security.checkISIN`, before a caller submits a transaction that pays gas to learn the same
+thing the contract already knows.
+
+---
+
+## B9. `updateMaturityDate`'s natspec contradicts its implementation
+
+**severity: the documented invariant is not enforced, and the real one is weaker.**
+
+`IMaturity.sol`'s natspec states that a new maturity date must be later than the current
+one. the on-chain guard does not check that.
+`MaturityDateStorageWrapper.sol:56-60` checks only `newDate > block.timestamp`.
+
+the "later than the current maturity" rule exists **only client-side**, in the sdk's
+`ValidationService.checkMaturityDate`. so any caller reaching the contract directly, which
+is every caller not using this sdk, can move a bond's maturity date **backwards**, to any
+point in the future, and the contract will accept it.
+
+for our own use this is convenient: we compress a three year lifecycle into a demo. but a
+documented invariant that lives in the client rather than the contract is not an invariant.
+
+**suggested fix:** enforce it on chain, or correct the natspec to say what is actually
+guaranteed.
+
+---
+
 ## minor: the reference app encodes currency two different ways
 
 not an sdk defect, an inconsistency in `apps/ats/web`.

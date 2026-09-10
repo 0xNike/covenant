@@ -31,16 +31,17 @@ project. read `PROJECT_BRIEF.md` §4 before assuming more than the paragraph abo
 written ahead of the evidence.** the table below mirrors `EVIDENCE.md` gate by gate. update
 it there first, then here, never the other way round.
 
-no transaction has landed on Hedera testnet yet. what exists today is governance, planning
-and configuration: the nine agent definitions in `.claude/agents/`, `PROJECT_BRIEF.md`,
-`DECISIONS.md`, the sdk operation surface mapped in `specs/02-sdk-surface.md`, the `.env.example`
-template wired to real testnet accounts and the deployed ATS infrastructure, and the
-architecture diagram at `docs/architecture.md`. the application code in `app/` is still the
-unmodified `create-next-app` scaffold. no covenant-specific console screen exists yet.
+**G1 is green.** a bond has landed on Hedera testnet. what exists beyond that is still mostly
+governance, planning and configuration: the nine agent definitions in `.claude/agents/`,
+`PROJECT_BRIEF.md`, `DECISIONS.md`, the sdk operation surface mapped in
+`specs/02-sdk-surface.md`, the `.env.example` template wired to real testnet accounts and the
+deployed ATS infrastructure, and the architecture diagram at `docs/architecture.md`. the
+application code in `app/` now has an issuance console (`app/issue-panel.tsx`), which is what
+produced the token below. kyc, coupon, kpi and collateral hold screens do not exist yet.
 
 | gate | proves | status |
 |---|---|---|
-| G1 | bond issued on Hedera testnet, visible on HashScan | not started |
+| G1 | bond issued on Hedera testnet, visible on HashScan | **VERIFIED** |
 | G2 | transfer blocked by KYC, grant issued, same transfer succeeds | not started |
 | G3 | coupon distributed to holders of record. **first submittable entry** | not started |
 | G4 | `addKpiData` posted, coupon rate steps on a coupon's `fixingDate`, hold created and executed | not started |
@@ -49,14 +50,52 @@ unmodified `create-next-app` scaffold. no covenant-specific console screen exist
 
 nothing below G3 is a complete submission on its own. G1 through G3 together are.
 
+### G1, in full
+
+every value below was checked independently against Hedera's mirror node and the testnet
+json-rpc relay, not against this project's own console. full method in `EVIDENCE.md` G1.
+
+| field | value |
+|---|---|
+| token (contract) id | `0.0.10450229` |
+| token evm address | `0xc10cac0e7afd175faf04572327c85e54f015ca87` |
+| transaction | [`0xb13a78518922d1ba1c40966db9cc5e34174db85946f030e84eff03737e7fa078`](https://hashscan.io/testnet/transaction/0xb13a78518922d1ba1c40966db9cc5e34174db85946f030e84eff03737e7fa078) |
+| contract, hashscan | https://hashscan.io/testnet/contract/0.0.10450229 |
+| signer | `0.0.10424387` (issuer) |
+| cost | 7.80696070 HBAR |
+| name / symbol | Covenant KPI-Linked Private Credit Note 2029 / CVNT29 |
+| isin | XS9999COV006 |
+| decimals / max supply | 2 / 100000 |
+| configuration | `0x...02`, bond variable rate, version 1, operational |
+| coupon rate type | STANDARD (1). open item, see below |
+
+**a naming caveat, stated plainly so the name does not imply more than it does.** the token's
+name says "KPI-Linked". the on-chain mechanism does not match the name. config `0x...02`
+carries `CouponFacet` and `InterestRateFacet`, not `KpisFacet` or `KpiLinkedRateFacet`.
+`addKpiData` is not callable on this token. the configuration that does carry the KPI-linked
+mechanism, config `0x...04`, is registered in the deployed resolver and unreachable by any
+working path (`BUG.md` B1). "KPI-Linked" in the name describes the private credit instrument
+covenant models, not a claim about what runs on this token. the KPI reading is converted to a
+coupon rate off chain instead, against bounds fixed at issuance, and posted through a
+role-gated `setRate` transaction that the token then owns. see `PROJECT_BRIEF.md` §3 step 5
+and §4, and `DECISIONS.md` D16, for the full account of what this costs and why.
+
+**the open item.** the token issues with coupon rate type STANDARD, meaning the token will
+accept whatever rate a caller hands it. `RateType.FIXED` must be set before the first coupon
+so the token refuses a caller-supplied rate and stamps every coupon from its own storage
+instead. that is the difference the writeup leans on. `setCouponRateType` has not been called
+yet.
+G3 does not proceed until this is resolved.
+
 ---
 
 ## what runs today
 
 this repository is a next.js 16 / react 19 app with the ATS sdk (`@hashgraph/asset-tokenization-sdk@8.0.0`)
-as an npm dependency. right now `npm run dev` serves the default next.js scaffold, not a
-covenant screen. the instructions below are for running what exists, and will describe more
-as the build order in `MASTER_TODO_LIST.md` moves through its gates.
+as an npm dependency. `npm run dev` now serves an issuance console (`app/issue-panel.tsx`),
+which is what issued the token verified in G1 above. it does not yet cover kyc, coupon, kpi
+or collateral hold. the instructions below are for running what exists, and will describe
+more as the build order in `MASTER_TODO_LIST.md` moves through its gates.
 
 ```
 node   >= 20.19.4
@@ -96,9 +135,10 @@ account, not by a script holding a key. no private key exists in this repository
   published computation is what ran, or that the value a human typed in matches its output.
   see `docs/architecture.md` for exactly where that boundary sits and what it deliberately
   does not draw.
-- **the confidential engine runs today as a plain local service**, not inside an enclave.
-  the target is to run the same computation behind a Chainlink CRE `handlerInTee`, a
-  hardware-isolated, TEE-based enclave. if that does not land in the build's timebox, the
+- **the confidential engine is not built yet.** it is being built now as a plain local
+  service, behind a clean interface, so it does not exist as a running thing you can point
+  at today. the target is to run the same computation behind a Chainlink CRE `handlerInTee`,
+  a hardware-isolated, TEE-based enclave. if that does not land in the build's timebox, the
   fallback is a CRE CLI simulation of the same handler.
   whichever ships, `EVIDENCE.md` and the Chainlink writeup say so plainly rather than
   implying a live deployment that did not happen.

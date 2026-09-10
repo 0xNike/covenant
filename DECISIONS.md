@@ -284,7 +284,7 @@ checkpoint date, or a date below the minimum.
 
 ---
 
-## D12. F1 is not a bug. F2 is the upstream candidate
+## D12. W1 is not a bug. B4 is the upstream candidate
 
 apollo and athena reached this independently, by different routes.
 
@@ -296,13 +296,13 @@ contract's correctly named field. **the returned value is correct.** athena adds
 
 it is a misnamed parameter with zero behavioural effect. a one-line rename.
 
-**decision:** F1 demoted to a naming nit in the writeup's feedback section. **F2 promoted**:
+**decision:** W1 demoted to a naming nit in the writeup's feedback section. **B4 promoted**:
 `RequestAccount.privateKey` at `port/in/request/BaseRequest.ts:9` is a public field consumed
 by nothing, because `SupportedWallets.CLIENT` is commented out at `Wallet.ts:9`. a field that
 invites you to hand the sdk a key it silently ignores is a real developer trap with a
 security shape.
 
-**why this matters more than it looks.** `CLAUDE.md` §2 named F1 as our upstream PR candidate
+**why this matters more than it looks.** `CLAUDE.md` §2 named W1 as our upstream PR candidate
 and `PROJECT_BRIEF.md` §6 says do not manufacture a friction point. submitting a cosmetic
 rename as an ATS improvement invites a devrel judge to open the file and find exactly that.
 the plan was quietly breaking its own rule. we take the third prize slot only if blocks A
@@ -371,7 +371,7 @@ points at §4 rather than repeating it.
 
 ---
 
-## D14. F3 withdrawn. the scheduledTask docs are fine, we misread them
+## D14. W2 withdrawn. the scheduledTask docs are fine, we misread them
 
 hao instructed that the `scheduledTask` finding was a documentation gap in ATS and should go
 to rudolph as an upstream PR candidate. rudolph assessed it and **came back saying it is not
@@ -391,14 +391,14 @@ greps for `hedera schedule service`, `schedule service`, `HSS` and `0x16b` acros
 "Hedera Schedule Service" without reading past the facet name. D13's correction to the brief
 stands and was necessary. what does not stand is the characterisation of the cause.
 
-**decision:** F3 withdrawn as a PR candidate. **F2 is the single upstream contribution**, and
+**decision:** W2 withdrawn as a PR candidate. **B4 is the single upstream contribution**, and
 `RequestAccount.privateKey` was re-verified live against `BaseRequest.ts:9` and `Wallet.ts:9`
-during this assessment. F3 becomes one honest sentence in the writeup feedback section: we
+during this assessment. W2 becomes one honest sentence in the writeup feedback section: we
 briefly misread `scheduledTask` as the native schedule service, and on a closer read the docs
 are accurate and never claim it.
 
 **why this is the right outcome.** `PROJECT_BRIEF.md` §6 says do not manufacture a friction
-point. D12 already caught the plan breaking that rule once, on F1. filing a docs PR to fix a
+point. D12 already caught the plan breaking that rule once, on W1. filing a docs PR to fix a
 gap that does not exist would have been the same error a second time, and a devrel judge who
 opened the file would have found accurate documentation and a contributor who had not read
 it. the honest sentence is also the better devrel story.
@@ -505,3 +505,101 @@ pricing a risk it may not inspect, carried by the haircut, `Hold.escrow`, and th
 release-versus-execute fork. all present on config 2, escrow `0.0.10445014` distinct from the
 agent `0.0.10424387`. what config 2 costs is sponsor-product depth, which is a real loss and
 a smaller one than it felt.
+
+---
+
+## D17. the "discloses strictly less" claim was false. corrected
+
+hercules flagged it while building the engine, and hermes verified it.
+
+apollo's second review argued, and hermes wrote into `PROJECT_BRIEF.md` §3 step 5, that our
+off-chain rate path "discloses strictly less" than an on-chain `addKpiData` would, because
+`addKpiData` publishes the borrower's leverage ratio to a public ledger.
+
+**it does not.** `rateForKpi` in `lib/ats/note-terms.ts` is piecewise linear across the
+published bounds: 1.00x leverage maps to 4.00%, 3.00x to 8.00%, 6.00x to 16.00%. the rate is
+**finer grained than the KPI it consumes**, 400 rate steps across 200 leverage steps, so
+inside the operating band every leverage value maps to a distinct rate. the mapping is
+**invertible**. once `FixedRate.setRate` lands, anyone holding the bounds, which are
+published at issuance by design, recovers the leverage from the rate. it is non-invertible
+only outside the caps, where values clamp to min or max.
+
+so publishing the rate is, within the band, equivalent to publishing the KPI. the substitute
+discloses the same thing by a slightly longer route.
+
+**what is actually true, and it is still the claim worth making.** the boundary is around the
+**financials, not the KPI**. revenue, EBITDA, total debt and interest expense never leave the
+engine. hercules verified that against the running server: the lender page, its inlined RSC
+flight payload, and all fourteen script chunks it loads, 3.64 MB, scanned for every fixture
+value and field name, zero hits, **with a control scan against the agent view returning hits
+to prove the search actually fires.** a negative result without a control is worthless.
+
+§3 step 5 rewritten to say exactly that, and to state plainly that we do not claim the
+substitute discloses less, because it does not.
+
+**process note.** apollo proposed the line and hermes wrote it, and neither checked whether
+the function was invertible. it took the person building the thing to notice. that is the
+third time an agent has overturned a claim that had already passed review, and it is an
+argument for having the implementer read the claims rather than only the reviewer.
+
+---
+
+## D18. block B uses the internal KYC registry directly, not the mock external list
+
+hermes instructed gamma to use `createExternalKycMock()` + `grantKycMock()` and avoid internal
+`grantKyc`. gamma deviated and was right. hermes verified the load-bearing claim at source
+before approving.
+
+**why the mock path cannot work on this token.** `KycStorageWrapper.sol:206-210` **ANDs** the
+two legs:
+
+```solidity
+bool internalKycValid = !kycStorage().internalKycActivated ||
+    getKycStatusFor(_account, ...) == _kycStatus;
+return internalKycValid && ExternalListManagementStorageWrapper.isExternallyGranted(...);
+```
+
+our token has `internalKycActivated == true`, pinned deliberately at issuance per D10. an
+external-list grant satisfies only the second leg, so the transfer stays blocked. making the
+mock path work needs `deactivateInternalKyc()` first, which discards the flag D10 calls
+load-bearing, adds transactions, and moves the compliance gate onto `contracts/test/mocks`.
+
+**why the internal path is legitimate.** hermes' reason for avoiding it was
+`GrantKycCommandHandler.ts:34-42`, which decodes a Terminal3 verifiable credential and calls
+`verifyVc()`. **that check is entirely client side.** the deployed contract
+(`facets/kyc/Kyc.sol:59-81`) takes `string memory _vcId` and stores it opaquely in
+`KycData`. verified: the only read of it anywhere is `KycStorageWrapper.sol:131`, a
+revocation-list lookup that runs only if a revocation list address was set, which on our
+token it was not.
+
+**decision:** grant KYC through the deployed `Kyc` facet directly via ethers. same precedent
+as `setCouponRateType` in D16. keeps `internalKycActivated: true`, uses the production
+registry rather than a test double, and costs 7 signatures rather than 9.
+
+**how this must be described, and it is not optional.** we grant KYC in the token's own
+internal registry, carrying a **placeholder credential identifier that the contract stores
+and never verifies.** we do not claim to have verified anyone's identity. saying we ran KYC
+would be false; saying we exercised the token's compliance gate is true. zeus writes the
+second.
+
+**two prerequisites nobody had found**, both verified live by gamma:
+`KycStorageWrapper.sol:126` returns `NOT_GRANTED` when `isIssuer(record.issuer)` is false, and
+the token reports `getIssuerListCount() == 0`, so `SsiManagement.addIssuer` must run first or
+**every grant reads as not granted no matter what was written**. and `ROLE_KYC`,
+`ROLE_SSI_MANAGER` and `ROLE_ISSUER` are all unheld: the issuer holds only
+`DEFAULT_ADMIN_ROLE`.
+
+---
+
+## D19. the issued token has zero supply. `deployBond` writes a cap, it does not mint
+
+found by gamma reading the chain rather than assuming. `totalSupply() == 0`,
+`balanceOf(issuer) == 0`, `getMaxSupply() == 100000` raw, which is 1000.00 notes at 2 decimals.
+
+**G1 remains honest as recorded**: a bond was issued and exists on chain. it had no supply,
+and nothing in `EVIDENCE.md` claimed otherwise. but minting is now part of block B, and it is
+itself compliance gated: `Mint.sol:48` carries
+`onlyIdentifiedAddresses(address(0), _tokenHolder)`, so **the issuer must hold KYC before it
+can receive its own notes.**
+
+that is what turns block B from three transactions into eight.
