@@ -31,11 +31,13 @@ import {
   engineRateForSdk,
   grantMaturityRole,
   grantRateRoles,
+  offerRateAndBeRefused,
   postEngineRate,
   RATE_TYPE,
   setCouponRateTypeFixed,
   triggerScheduledTasks,
   type CouponWindow,
+  type RateRefusal,
 } from "@/lib/ats/coupon";
 import {
   buildSettlements,
@@ -51,6 +53,7 @@ type StepId =
   | "rateType"
   | "engine"
   | "postRate"
+  | "refusal"
   | "coupon"
   | "trigger"
   | "maturityRole"
@@ -168,6 +171,7 @@ export default function BlockCPanel() {
   const [results, setResults] = useState<Partial<Record<StepId, StepResult>>>({});
   const [pendingHash, setPendingHash] = useState<Partial<Record<StepId, string>>>({});
   const [settlements, setSettlements] = useState<SettlementResult[]>([]);
+  const [refusal, setRefusal] = useState<RateRefusal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [diag, setDiag] = useState<CouponDiagnostics | null>(null);
@@ -379,6 +383,29 @@ export default function BlockCPanel() {
       };
     });
 
+  /**
+   * read only. no wallet, no signature, no gas, no state change.
+   *
+   * the same eth_call twice: once with a rate we attached ourselves, once with
+   * the pending triplet. the first is refused by name, the second simulates
+   * cleanly, and the only difference between them is the rate.
+   */
+  const stepRefusal = () =>
+    run("refusal", async () => {
+      const now = Math.floor(Date.now() / 1000);
+      const window = buildCouponWindow(now, {
+        accrualSeconds: Number(accrualDays) * 86400,
+        recordInSeconds: Number(recordInSeconds),
+        executionInSeconds: Number(executionInSeconds),
+      });
+      const r = await offerRateAndBeRefused(cfg, tokenEvm, window);
+      setRefusal(r);
+      return {
+        ok: r.refused && r.revert?.name === "InterestRateIsFixed()",
+        lines: r.lines,
+      };
+    });
+
   const stepCoupon = () =>
     run("coupon", async () => {
       const d = await refresh();
@@ -549,6 +576,22 @@ export default function BlockCPanel() {
   const isFixed = diag?.couponRateType === RATE_TYPE.FIXED;
   const rateInStorage = diag?.fixedRate && diag.fixedRate.raw !== "0" ? diag.fixedRate : null;
   const latest = diag?.coupons[diag.coupons.length - 1] ?? null;
+  // a non-zero rate in storage says nothing about where the rate came from. the
+  // card may only go live when the integer in storage is the integer this
+  // session's engine run produced, the same test the stamped card applies below.
+  const storedRateIsEngineRate =
+    rateInStorage !== null &&
+    engineResult !== null &&
+    rateInStorage.raw === String(engineResult.rate.value) &&
+    rateInStorage.decimals === engineResult.rate.decimals;
+  // the issuer's own entitlement, which is real, is displayed, and is never
+  // paid: payCouponsInHbar skips self (`coupon-settlement.ts:134`). without
+  // saying so, one small payment beside a much larger total reads as a partial
+  // settlement.
+  const issuerRow =
+    latest?.entitlements.find(
+      (e) => e.evm.toLowerCase() === cfg.accounts.issuer.evm.toLowerCase(),
+    ) ?? null;
   const stampedMatchesEngine =
     latest !== null &&
     engineResult !== null &&
@@ -659,12 +702,14 @@ export default function BlockCPanel() {
         />
         <VerdictCard
           cfg={cfg}
-          state={rateInStorage ? "live" : "idle"}
+          state={storedRateIsEngineRate ? "live" : "idle"}
           title="engine priced"
           line={
-            rateInStorage
-              ? `${rateInStorage.percent} in the token's rate storage`
-              : "the engine's rate is not on chain yet"
+            storedRateIsEngineRate
+              ? `${rateInStorage?.percent} in the token's rate storage, and it is the engine's number`
+              : rateInStorage
+                ? `${rateInStorage.percent} is in rate storage, but no engine run in this session produced it`
+                : "the engine's rate is not on chain yet"
           }
           detail={
             engineResult
@@ -748,12 +793,18 @@ export default function BlockCPanel() {
           />
         </div>
         <p className="text-zinc-500">
-          the accrual period is real and ends now: it is the quarter the engine
-          just read a filing for. what is compressed is the administration, the
-          record date {recordInSeconds}s out and the payment date{" "}
-          {executionInSeconds}s out, so the register is fixed and the entitlement
-          becomes readable inside the demo. nothing here pretends a quarter
-          elapsed on camera.
+          the accrual window is backdated a full quarter, {accrualDays} days
+          ending now, so the entitlement is the size a real quarterly coupon
+          would be. the note itself is one day old, so that window sits before
+          the note existed. the record date {recordInSeconds}s out and the
+          payment date {executionInSeconds}s out are compressed for the same
+          reason: the register is fixed and the entitlement becomes readable
+          inside the demo.
+        </p>
+        <p className="text-zinc-500">
+          this window is not the reporting period of the filing the engine read.
+          the filing&apos;s period is an engine input, shown on the engine step.
+          the two are separate things and the console does not equate them.
         </p>
         <pre className="overflow-x-auto whitespace-pre-wrap text-zinc-600 dark:text-zinc-400">
           {[
@@ -886,6 +937,65 @@ export default function BlockCPanel() {
       )}
 
       {step(
+        "refusal",
+        "4b",
+        "offer the token a rate it did not ask for, and watch it refuse",
+        <>
+          an eth_call of setCoupon carrying rate 6 at 2 decimals marked SET,
+          which is a rate we chose rather than one the token owns. no signature,
+          no gas, no state. under FIXED the token checks the triplet before it
+          checks anything about the coupon and reverts InterestRateIsFixed(),
+          and the decoded revert is printed below. the identical call with the
+          pending triplet is simulated straight after and passes, so the window,
+          the role and the token state are ruled out and the rate is the only
+          difference between them.
+        </>,
+        stepRefusal,
+        "offer a rate and read the refusal",
+        !isFixed,
+        false,
+      )}
+
+      {refusal && (
+        <section
+          className={
+            "flex flex-col gap-2 border-2 p-4 " +
+            (refusal.revert?.name === "InterestRateIsFixed()"
+              ? "border-red-600"
+              : "border-amber-600")
+          }
+        >
+          <h2 className="text-2xl font-bold tracking-tight uppercase">
+            the token refused our rate
+          </h2>
+          <p className="text-zinc-500">
+            offered rate {refusal.offered.rate} at{" "}
+            {refusal.offered.rateDecimals} decimals, rateStatus SET. answered by
+            the deployed token over eth_call, from{" "}
+            {cfg.accounts.issuer.evm}.
+          </p>
+          <pre className="overflow-x-auto whitespace-pre-wrap break-all text-lg font-semibold">
+            {refusal.revert?.summary ??
+              (refusal.refused
+                ? "reverted, revert data unreadable"
+                : "not refused")}
+          </pre>
+          {refusal.revert?.raw && (
+            <pre className="overflow-x-auto whitespace-pre-wrap break-all text-zinc-500">
+              revert data {refusal.revert.raw}
+            </pre>
+          )}
+          <p className="text-zinc-500">
+            {refusal.pendingAccepted === true
+              ? "the identical call with rate 0 and rateStatus PENDING simulates cleanly. the rate is the only difference."
+              : refusal.pendingAccepted === false
+                ? "the control call also reverted, so this cannot be read as a rate refusal on its own. see the log."
+                : "control call not run."}
+          </p>
+        </section>
+      )}
+
+      {step(
         "coupon",
         "5",
         "declare the coupon, naming no rate",
@@ -970,9 +1080,12 @@ export default function BlockCPanel() {
           compute what each holder is owed, and ICoupon declares no payment
           method at all. so ATS fixes the register and publishes the entitlement,
           and the agent pays it. these are plain value transfers signed by the
-          agent, one per holder, sized at the entitlement divided by the stated
-          settlement scale of {settlementScale}. that scale is a demo device, not
-          an exchange rate, and no exchange rate is implied anywhere.
+          agent, one per holder. the entitlement is denominated in the
+          note&apos;s currency. testnet has no such instrument and we deploy no
+          contracts, so we settle in HBAR at a stated demo scale of 1 per{" "}
+          {settlementScale} of entitlement. it is not an exchange rate. the
+          issuer holds the unsold notes and does not pay itself, so its
+          entitlement appears in the table above and is not settled.
         </>,
         stepSettle,
         "pay the coupon",
@@ -1129,9 +1242,16 @@ export default function BlockCPanel() {
             settlement, performed by the agent and not by ATS
           </h2>
           <p className="text-zinc-500">
-            plain value transfers from {cfg.accounts.issuer.id}. sized at the
-            entitlement the token computed, divided by the stated demo scale of{" "}
-            {settlementScale}. no exchange rate is implied.
+            plain value transfers from {cfg.accounts.issuer.id}. the entitlement
+            is denominated in the note&apos;s currency. testnet has no such
+            instrument and we deploy no contracts, so we settle in HBAR at a
+            stated demo scale of 1 per {settlementScale} of entitlement. it is
+            not an exchange rate.
+          </p>
+          <p className="text-zinc-500">
+            {issuerRow
+              ? `the issuer holds ${issuerRow.balance} of the ${diag?.totalSupply ?? "?"} notes and does not pay itself. the entitlement on those notes, ${issuerRow.amount}, is shown above and is not settled.`
+              : "the issuer does not pay itself. any entitlement on notes the issuer still holds is shown above and is not settled."}
           </p>
           {settlements.map((s) => (
             <div key={s.evm} className="flex flex-col">

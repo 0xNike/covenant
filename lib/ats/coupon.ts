@@ -412,11 +412,24 @@ export interface CouponWindowOptions {
 /**
  * builds the coupon window for a compressed demo.
  *
- * the accrual period is real and ends now: it is the quarter the engine just
- * read a filing for. what is compressed is the administration, the record date
- * a minute out and the payment date two minutes out, so a viewer sees holders of
- * record fixed and the entitlement become readable inside the demo. nothing here
- * pretends a quarter elapsed on camera.
+ * **the accrual window is backdated a full quarter, and it has to be said so.**
+ * `startTimestamp` is `now - accrualSeconds` and `endTimestamp` is now, so the
+ * window sits entirely before the note existed: the note was issued today with
+ * `startingDate = now + 120`, carried zero supply until block B, and the holder
+ * acquired its notes minutes before this call. the backdating is the only
+ * reason the entitlement is the size of a real quarterly coupon rather than a
+ * fraction of a cent, because `_calculateCouponAmount`
+ * (`CouponStorageWrapper.sol:570,578`) computes `period = endDate - startDate`
+ * and multiplies the payable by it.
+ *
+ * this window is **not** the reporting period of the filing the engine read.
+ * the filing's period is an engine input and is labelled on its own card. no
+ * copy anywhere may identify the two, because a viewer can compare `startDate`
+ * here against `startingDate` on the token and see the difference.
+ *
+ * the record and payment dates are compressed for the same reason and are
+ * honest about it: a minute and two minutes out, so the register is fixed and
+ * the entitlement becomes readable inside the demo.
  *
  * `startTimestamp` being in the past is deliberate and permitted:
  * `Coupon.setCoupon`'s `onlyValidTimestamp` is applied to `recordDate` and
@@ -600,6 +613,152 @@ async function readCouponCount(
   });
   const token = new ethers.Contract(toEvmAddress(tokenEvm), COUNT_ABI, provider);
   return Number(await token.getCouponCount());
+}
+
+// -----------------------------------------------------------------------------
+// step 5b. the rate the token refuses. read only.
+// -----------------------------------------------------------------------------
+
+/**
+ * digs revert data out of an ethers CALL_EXCEPTION.
+ *
+ * ethers puts it on `error.data` when the relay returns it cleanly, and the
+ * hedera relay sometimes nests it under `info.error.data` or carries it only in
+ * the message text. same shape of problem as `extractHash` in compliance.ts,
+ * different field, so it is walked the same way and falls back to the first
+ * even-length hex blob of at least four bytes that it finds.
+ */
+function extractRevertData(e: unknown): string | null {
+  const KEYS = ["data", "info", "error", "cause", "value", "body", "shortMessage", "message"];
+  const seen = new Set<unknown>();
+  const walk = (v: unknown, depth: number): string | null => {
+    if (v === null || v === undefined || depth > 6) return null;
+    if (typeof v === "string") {
+      const m = v.match(/0x[0-9a-fA-F]{8}(?:[0-9a-fA-F]{2})*/);
+      return m ? m[0] : null;
+    }
+    if (typeof v !== "object" || seen.has(v)) return null;
+    seen.add(v);
+    for (const key of KEYS) {
+      const found = walk((v as Record<string, unknown>)[key], depth + 1);
+      if (found) return found;
+    }
+    return null;
+  };
+  return walk(e, 0);
+}
+
+export interface RateRefusal {
+  /** the non-pending triplet we offered the token */
+  offered: { rate: string; rateDecimals: number; rateStatus: number };
+  /** true when the token refused it */
+  refused: boolean;
+  /** the decoded revert, when there was one */
+  revert: ReturnType<typeof decodeRevert>;
+  /** true when the identical call with the pending triplet simulates cleanly */
+  pendingAccepted: boolean | null;
+  lines: string[];
+}
+
+/**
+ * offers the token a rate of our own and reads back its refusal. **no
+ * signature, no gas, no state.**
+ *
+ * this is an `eth_call` of `setCoupon` with the same window the real coupon
+ * will use and one difference: the rate triplet is `rate 6, rateDecimals 2,
+ * rateStatus SET` instead of the pending triplet. under FIXED,
+ * `CouponRateDispatch.validateAndStamp` (`:85`) checks `_isPendingRate` and
+ * reverts `IFixedRate.InterestRateIsFixed()` on anything else, so the refusal
+ * comes from the deployed contract and names itself.
+ *
+ * `from` is the issuer because `Coupon.setCoupon` is `onlyRole(
+ * ROLE_CORPORATE_ACTION)` (`Coupon.sol:60`) and the role check runs before the
+ * rate check. an `eth_call` from the zero address would revert
+ * `AccountHasNoRole` and prove nothing about rates. the wallet is not involved:
+ * the address is read from config and the call goes over the json-rpc relay.
+ *
+ * the control matters as much as the refusal. the identical call with the
+ * pending triplet is simulated too, and it succeeds, which is what rules out a
+ * bad window, a missing role or a paused token as the cause of the revert. the
+ * only difference between the two calls is the rate the caller attached.
+ */
+export async function offerRateAndBeRefused(
+  cfg: CovenantConfig,
+  tokenEvm: string,
+  window: CouponWindow,
+): Promise<RateRefusal> {
+  const provider = new ethers.JsonRpcProvider(cfg.rpcNode, undefined, {
+    staticNetwork: true,
+  });
+  const token = await assetContract(toEvmAddress(tokenEvm), provider);
+  const from = toEvmAddress(cfg.accounts.issuer.evm);
+
+  const dates = {
+    recordDate: window.recordTimestamp,
+    executionDate: window.executionTimestamp,
+    startDate: window.startTimestamp,
+    endDate: window.endTimestamp,
+    fixingDate: window.fixingTimestamp,
+  };
+  const offered = { rate: "6", rateDecimals: 2, rateStatus: RATE_STATUS.SET };
+
+  const lines: string[] = [];
+  let refused = false;
+  let revert: ReturnType<typeof decodeRevert> = null;
+
+  try {
+    const id = await token.setCoupon.staticCall(
+      { ...dates, ...offered },
+      { from },
+    );
+    lines.push(
+      `the token ACCEPTED a caller-supplied rate and would issue coupon ${id}. ` +
+        "that means the coupon rate type is not FIXED yet. run step 2 first: on " +
+        "STANDARD the token stores whatever rate it is handed, which is the thing " +
+        "this call exists to show it no longer does.",
+    );
+  } catch (e) {
+    const raw = extractRevertData(e);
+    revert = decodeRevert(raw);
+    refused = true;
+    lines.push(
+      `offered the token rate ${offered.rate} at ${offered.rateDecimals} decimals, ` +
+        `marked SET. it refused: ${revert?.summary ?? "revert data unreadable"}`,
+    );
+    if (raw) lines.push(`revert data ${raw}`);
+    if (revert?.name !== "InterestRateIsFixed()") {
+      lines.push(
+        "this is not the refusal we are claiming. InterestRateIsFixed() is the rate " +
+          "guard; anything else means the call failed for another reason and the " +
+          "screen must not present it as a rate refusal.",
+      );
+    }
+  }
+
+  // the control. identical call, pending triplet, expected to simulate cleanly.
+  let pendingAccepted: boolean | null = null;
+  try {
+    await token.setCoupon.staticCall(
+      { ...dates, rate: "0", rateDecimals: 0, rateStatus: RATE_STATUS.PENDING },
+      { from },
+    );
+    pendingAccepted = true;
+    lines.push(
+      "the identical call with the pending triplet simulates cleanly, so the window, " +
+        "the role and the token state are all fine. the rate is the only difference.",
+    );
+  } catch (e) {
+    pendingAccepted = false;
+    const controlRevert = decodeRevert(extractRevertData(e));
+    lines.push(
+      "the control call, pending triplet, also reverted: " +
+        `${controlRevert?.summary ?? "revert data unreadable"}. something other than ` +
+        "the rate is wrong with this call and the refusal above cannot be read as a " +
+        "rate refusal on its own.",
+    );
+  }
+
+  return { offered, refused, revert, pendingAccepted, lines };
 }
 
 // -----------------------------------------------------------------------------

@@ -70,6 +70,24 @@ export const REVERT_SELECTORS: Record<
   },
   [sel("MaxSupplyReached(uint256)")]: { name: "MaxSupplyReached(uint256)" },
   [sel("InvalidDates()")]: { name: "InvalidDates()" },
+  // the rate-type family, `CouponRateDispatch.validateAndStamp`
+  // (`domain/asset/coupon/CouponRateDispatch.sol:85,97`). the FIXED one is the
+  // error block C offers the token on purpose: a coupon carrying a
+  // caller-supplied rate, refused by name.
+  // `IFixedRate.InterestRateIsFixed` at `facets/fixedRate/IFixedRate.sol:43`,
+  // `ICoupon.InterestRateIsStandard` at `facets/coupon/ICoupon.sol:83`,
+  // `ICoupon.InterestRateIsKpiLinked` at `:77`.
+  [sel("InterestRateIsFixed()")]: { name: "InterestRateIsFixed()" },
+  [sel("InterestRateIsStandard()")]: { name: "InterestRateIsStandard()" },
+  [sel("InterestRateIsKpiLinked()")]: { name: "InterestRateIsKpiLinked()" },
+  // the date guards on `setCoupon`, `infrastructure/errors/ICommonErrors.sol:68,80`.
+  // present so a malformed window is named rather than reported as an
+  // unrecognised selector next to a rate claim it would undermine.
+  [sel("WrongDates(uint256,uint256)")]: {
+    name: "WrongDates(uint256,uint256)",
+    args: ["uint256", "uint256"],
+  },
+  [sel("InvalidTimestamp()")]: { name: "InvalidTimestamp()" },
   [sel("AssetNotOperational(bytes32,uint256)")]: {
     name: "AssetNotOperational(bytes32,uint256)",
   },
