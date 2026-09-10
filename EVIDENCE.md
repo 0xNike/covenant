@@ -230,7 +230,7 @@ one-line description, and the on-chain evidence where there is any. no duplicate
 | B1 | `Bond.createKpiLinkedRate` cannot reach any real deployment; config 4 is registered in the deployed resolver and unreachable by any working path | none. client-side `TypeError`, no transaction constructed. facet readiness re-derived live against resolver `0.0.9212226`, see G1 item 6 above |
 | B2 | the sdk cannot be loaded in any browser bundler without hand-written shims | none, build-time finding |
 | B3 | the published ESM build cannot be loaded by node | none, build-time finding |
-| B4 | `RequestAccount.privateKey` is exposed on the public request interface and consumed by nothing. **primary upstream contribution candidate** | none, source-only finding |
+| B4 | `RequestAccount.privateKey` is exposed on the public request interface and consumed by nothing | none, source-only finding |
 | B5 | `@hashgraph/hedera-wallet-connect@2.1.2` has an undeclared dependency | none, dependency-tree finding |
 | B6 | `Bond.createKpiLinkedRate`'s declared return type does not match its runtime value | none, source-only finding |
 | B7 | `ROLE_MATURITY_MANAGER` is missing from the sdk's role enum | none, source-only finding |

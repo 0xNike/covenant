@@ -166,10 +166,6 @@ by a convention we could quietly break on stage.
   chain only through a person typing a value into a transaction and signing it in MetaMask.
 - **no on-chain attestation of the enclave's execution.** nothing on Hedera verifies that the
   published computation is what ran, or that the number a human typed in matches its output.
-- **no hash commitment of the engine's output in `Hold.data`.** putting a hash of the engine's
-  output into `Hold.data` at `createHoldByPartition` would give an on-chain commitment to the
-  exact computation, and is under consideration. it is not built and not decided, so it is not
-  drawn. if it ships, it earns its own arrow.
 - **no cash leg for the lender's advance.** the lender pricing and advancing cash at the
   haircut happens off-chain, tracked in the console. the collateral hold moves the note; it
   does not move cash.
@@ -178,6 +174,13 @@ by a convention we could quietly break on stage.
 - **no verification behind the KYC grant.** `Kyc.grantKyc` stores a credential identifier the
   contract never checks against anything. granting KYC exercises the token's compliance gate;
   it does not verify anyone's identity.
+- **no hash commitment of the engine's output in `Hold.data`.** we considered putting a hash of
+  the engine's output into `Hold.data` at `createHoldByPartition`, as an on-chain commitment to
+  the exact computation. it is unreachable through the sdk: `RPCTransactionAdapter.ts:1016`
+  hardcodes `data: "0x"` and `CreateHoldByPartitionRequest` has no such field. it is reachable
+  directly, confirmed by eth_call. we chose not to hand-build calldata for the single most
+  load-bearing transaction in the demo to add a commitment that nothing on chain verifies. the
+  cost is real; the benefit is presentational.
 
 ## why this matters more than it looks
 

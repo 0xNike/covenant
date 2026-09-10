@@ -336,6 +336,160 @@ guaranteed.
 
 ---
 
+## B10. `createHoldByPartition` validates one account's balance and debits another's
+
+**severity: a hold can be created over the wrong party's balance. for a tri-party collateral
+primitive this is the primitive's whole job, failing quietly.**
+
+### what happens
+
+`CreateHoldByPartitionCommandHandler.ts:50` checks balance against `account.id.toString()`,
+where `account` is `accountService.getCurrentAccount()`, the sdk's cached account. the
+contract holds from a different account entirely: `EvmAccessors.getMsgSender()` at
+`HoldByPartition.sol:60`.
+
+### why it matters
+
+those two accounts are the same on the happy path, so the mismatch is invisible until the
+cached account goes stale, at which point the sdk validates one party's balance and the
+contract debits another's, silently. there is no `from` parameter anywhere in the path, so
+the sdk has no way to express "hold from account X" at all, cached or otherwise.
+
+### suggested fix
+
+thread an explicit `from` account through `CreateHoldByPartitionRequest` and validate the
+balance against it, not against whatever the account service happens to have cached.
+
+---
+
+## B11. `expirationDate.substring(0, 10)` validates a different number than it sends
+
+**severity: a value can pass validation and then be sent as something else entirely.**
+
+### what happens
+
+`CreateHoldByPartitionCommandHandler.ts:58` truncates the caller's `expirationDate` string to
+its first ten characters before sending it. `CreateHoldByPartition.ts:36-38` validated
+`parseInt(val)` on the untruncated value. so a 13-digit millisecond timestamp passes
+validation as if it were a year-58690 date, and is then sent, correctly, as seconds. an ISO
+8601 string gives `NaN` at validation time and garbage at send time. two validators, one
+field, different values, the same failure shape already logged for `checkISIN` in B8: one
+check passes what the other would reject.
+
+### suggested fix
+
+validate the same value, in the same units, that gets sent. either validate after truncation
+or stop truncating.
+
+---
+
+## B12. `targetId` means two different things on two sibling requests
+
+**severity: minor, but it sits exactly where a developer will make the mistake.**
+
+### what happens
+
+on `ExecuteHoldByPartitionRequest`, `targetId` is the destination of the executed hold. on
+`ReleaseHoldByPartitionRequest`, the adapter puts the same field name into
+`HoldIdentifier.tokenHolder` (`RPCTransactionAdapter.ts:1132-1136`), so there it means the
+token holder instead. same name, two meanings, on two calls a developer will write next to
+each other.
+
+### suggested fix
+
+name the field for what it holds on each request: `destinationId` on execute, `tokenHolderId`
+on release.
+
+---
+
+## B13. `IHoldTypes.sol:44-45` documents a behaviour the code contradicts twice
+
+**severity: a documented convenience path, the never-expiring hold, does not exist and
+cannot be reached.**
+
+### what happens
+
+the natspec says an `expirationTimestamp` of zero means the hold never expires and can only
+be released or executed. two places in the code disagree, in two different directions:
+
+- `LockStorageWrapper.requireValidExpirationTimestamp` (`:352-355`) rejects any
+  `expirationTimestamp` below the current block timestamp, which makes zero unreachable
+  through this facet in the first place.
+- `isHoldExpired` (`HoldStorageWrapper.sol:764-766`) is `now >= expiration`, which, if a
+  zero-expiry hold ever existed, would read as **permanently expired**, the opposite of
+  "never expires."
+
+### confirmed
+
+by eth_call: creating a hold with `expirationTimestamp = 0` reverts `WrongExpirationTimestamp()`.
+
+### suggested fix
+
+either allow zero through `requireValidExpirationTimestamp` and special-case it in
+`isHoldExpired`, or correct the natspec to say a hold always expires.
+
+---
+
+## B14. the create path recovers its hold id by polling the mirror node rather than reading an event
+
+**severity: moderate, and it produces the worst possible failure mode, a successful
+transaction reported as an error.**
+
+### what happens
+
+the adapter passes no event name when creating a hold (`RPCTransactionAdapter.ts:1019-1024`),
+so `manageResponse` returns only the receipt status and `res.response?.holdId` is undefined.
+the handler falls through to `getTransactionResult` (`:62-68`), which polls
+`contracts/results/{hash}` for up to 15 seconds and parses word 1 of `call_result`. a slow
+mirror node makes the sdk report failure for a hold that exists on chain.
+
+### suggested fix
+
+pass the event name for the create call, as is done elsewhere in the sdk, and read the hold
+id off the event log instead of polling for it.
+
+---
+
+## B15. the typechain package's ethers types are unusable from a bundler-resolution app
+
+**severity: the generated typed factories cannot be used at all from a modern app. workaround
+exists, at the cost of the type safety the package is for.**
+
+`@hashgraph/asset-tokenization-contracts` declares `"type": "commonjs"`, so its generated
+typechain declarations resolve `ethers` to `node_modules/ethers/lib.commonjs`. an app on
+`"moduleResolution": "bundler"`, which is the next.js default and ours, resolves the same
+`ethers` to `lib.esm`.
+
+ethers ships **a separate declaration set per build**, both present:
+
+```
+node_modules/ethers/lib.commonjs/providers/network.d.ts
+node_modules/ethers/lib.esm/providers/network.d.ts
+```
+
+these declare classes carrying private fields, so the two `Network` types are nominally
+incompatible even though they are the same class at runtime. the result is that
+
+```ts
+IAsset__factory.connect(address, signer)
+```
+
+fails with `TS2345` on a `JsonRpcSigner` that is the correct runtime object, and no amount of
+casting at the call site fixes it cleanly, because the mismatch is in a transitive type.
+
+so the typed factories, which are the entire reason to depend on this package rather than an
+ABI, are unreachable from any app using bundler resolution.
+
+**our workaround**, in `lib/ats/coupon.ts` and `lib/ats/collateral.ts`, both documented
+inline: take `IAsset__factory.abi` and hand it to a plain `ethers.Contract`. that keeps the
+correct ABI, which was the point, and discards the generated types, which were the value.
+
+**suggested fix:** publish dual declarations, or add an `exports` map with a `types`
+condition per resolution mode, so a bundler-resolution consumer gets declarations resolving
+against `lib.esm`.
+
+---
+
 ## minor: the reference app encodes currency two different ways
 
 not an sdk defect, an inconsistency in `apps/ats/web`.
