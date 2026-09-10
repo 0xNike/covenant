@@ -290,9 +290,15 @@ export function buildNoteTerms(
   return {
     name: "Covenant KPI-Linked Private Credit Note 2029",
     symbol: "CVNT29",
-    // twelve characters, the ISIN length. `Security.checkISIN` only bounds the
-    // length (`domain/context/security/Security.ts:186-194`), it does not verify
-    // the check digit. this is a testnet instrument and the code is fictional.
+    // twelve characters, the ISIN length, with a valid ISO 6166 check digit.
+    // `Security.checkISIN` only bounds the length
+    // (`domain/context/security/Security.ts:186-194`) and does not verify the
+    // check digit, but `Factory.sol:283`'s `onlyValidISIN` does. we found that
+    // out by paying for it: the first issuance used XS9999COV001, passed sdk
+    // validation with zero errors and reverted on chain with
+    // `WrongISINChecksum(string)` for 0.18855433 HBAR. filed as BUG.md B8. this
+    // is a testnet instrument and the code is fictional, but the check digit is
+    // real because the contract checks it.
     isin: "XS9999COV006",
     decimals: TOKEN_DECIMALS,
 
@@ -455,10 +461,21 @@ export function buildBondTerms(
  * numbers are unchanged from the KPI-linked model above, they are just computed
  * off chain and posted rather than interpolated on chain.
  *
- * this is arguably the more defensible arrangement for covenant: `addKpiData`
- * would have written the borrower's leverage ratio to a public ledger, and the
- * whole premise is that the lender prices a risk it is not permitted to inspect.
- * posting only the resulting rate discloses strictly less.
+ * this function does NOT hide the KPI, and no copy anywhere may say it does.
+ * see DECISIONS.md D17. the mapping is piecewise linear over bounds published at
+ * issuance, and finer grained than the KPI it consumes: 400 rate steps across
+ * 200 leverage steps, so inside the operating band every leverage value maps to
+ * a distinct rate and the mapping is invertible. anyone holding the bounds
+ * recovers the leverage from the rate the moment `FixedRate.setRate` lands. it
+ * is non-invertible only outside the caps, where values clamp.
+ *
+ * the confidentiality boundary is around the borrower's **financials**, not the
+ * KPI: revenue, EBITDA, total debt and interest expense never leave the engine.
+ * that is the claim, and it is the only one that survives inspection.
+ *
+ * the value returned is the rate scaled by 10 ** RATE_DECIMALS, so "600" means
+ * 6.00 percent. it is NOT what `SetRateRequest.rate` takes. see
+ * `engineRateForSdk` in lib/ats/coupon.ts.
  */
 export function rateForKpi(impact: number): {
   rate: string;

@@ -10,6 +10,7 @@
     "scan:disclosure": "node scripts/scan-disclosure.mjs"
   },
   "dependencies": {
+    "@hashgraph/asset-tokenization-contracts": "^8.0.0",
     "@hashgraph/asset-tokenization-sdk": "^8.0.0",
     "@hiero-ledger/proto": "^2.25.0",
     "ethers": "^6.17.0",
