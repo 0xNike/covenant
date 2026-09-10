@@ -131,8 +131,19 @@ const TOKEN_ABI = [
  * easy to confuse under a recording light. this refuses to build a transaction
  * against the wrong account rather than letting one land and having to explain
  * it afterwards.
+ *
+ * exported, because the SDK writes need the same guard. the SDK signs with
+ * whatever MetaMask has selected at the moment of the call, and it repairs its
+ * own account on `accountsChanged`
+ * (`app/service/wallet/metamask/MetamaskService.ts:151-162`) without telling us.
+ * four of the SDK steps in this file fail loudly on the wrong account, with
+ * `AccountHasNoRole`, and cost one take. `attemptTransfer` does not: signed by
+ * the note holder it becomes a holder-to-holder self transfer, lands, and paints
+ * the permitted card green while "the same transfer now settles" is false. so
+ * every write in this file reads the live signer immediately before building the
+ * transaction and refuses on a mismatch.
  */
-async function requireSigner(expectedEvm: string): Promise<ethers.JsonRpcSigner> {
+export async function requireSigner(expectedEvm: string): Promise<ethers.JsonRpcSigner> {
   const eth = (globalThis as { ethereum?: ethers.Eip1193Provider }).ethereum;
   if (!eth) {
     throw new Error(
@@ -187,7 +198,9 @@ export interface TxResult {
 export async function grantComplianceRoles(
   securityId: string,
   targetId: string,
+  expectedSignerEvm: string,
 ): Promise<{ transactionId: string }> {
+  await requireSigner(expectedSignerEvm);
   const { Role, ApplyRolesRequest } = await loadSdk();
   const roles = [ROLES.SSI_MANAGER, ROLES.KYC, ROLES.ISSUER];
   const res = await Role.applyRoles(
@@ -223,7 +236,9 @@ export async function grantComplianceRoles(
 export async function addCredentialIssuer(
   securityId: string,
   issuerId: string,
+  expectedSignerEvm: string,
 ): Promise<{ transactionId: string }> {
+  await requireSigner(expectedSignerEvm);
   const { SsiManagement, AddIssuerRequest } = await loadSdk();
   const res = await SsiManagement.addIssuer(
     new AddIssuerRequest({ securityId, issuerId }),
@@ -266,6 +281,7 @@ export async function grantInternalKyc(
   tokenEvm: string,
   accountEvm: string,
   opts: GrantKycOptions = {},
+  onHash?: (hash: string) => void,
 ): Promise<TxResult> {
   const signer = await requireSigner(cfg.accounts.issuer.evm);
   const token = new ethers.Contract(toEvmAddress(tokenEvm), TOKEN_ABI, signer);
@@ -283,6 +299,11 @@ export async function grantInternalKyc(
     cfg.accounts.issuer.evm,
     { gasLimit: GAS.GRANT_KYC },
   );
+  // the hash exists the moment the wallet submits. the receipt is ten to thirty
+  // seconds behind it on this network, and a HashScan link on screen during
+  // those seconds is the difference between a step that looks alive and one that
+  // reads "waiting" through the whole shot.
+  onHash?.(tx.hash);
   const receipt = await tx.wait();
   return { hash: tx.hash, success: receipt?.status === 1 };
 }
@@ -311,7 +332,9 @@ export async function issueNotes(
   securityId: string,
   targetId: string,
   amount: string,
+  expectedSignerEvm: string,
 ): Promise<{ transactionId: string }> {
+  await requireSigner(expectedSignerEvm);
   const { Security, IssueRequest } = await loadSdk();
   const res = await Security.issue(
     new IssueRequest({ securityId, targetId, amount }),
@@ -351,7 +374,13 @@ export async function attemptTransfer(
   securityId: string,
   targetId: string,
   amount: string,
+  expectedSignerEvm: string,
 ): Promise<BlockedTransferEvidence> {
+  // the sender is whatever MetaMask has selected, and the SDK never says so.
+  // `readTransferPreflight` asks the token about a fixed pair of accounts, so a
+  // wrong connected account would put a preflight for one transfer beside a
+  // refusal from another and call the pair evidence. refuse first.
+  await requireSigner(expectedSignerEvm);
   const { Security, TransferRequest } = await loadSdk();
   try {
     const res = await Security.transfer(
@@ -407,6 +436,7 @@ export async function forceTransferOnChain(
   toEvm: string,
   amount: string,
   decimals: number,
+  onHash?: (hash: string) => void,
 ): Promise<TxResult> {
   const signer = await requireSigner(fromEvm);
   const tokenAddress = toEvmAddress(tokenEvm);
@@ -429,6 +459,7 @@ export async function forceTransferOnChain(
       gasLimit: GAS.TRANSFER,
     });
     hash = tx.hash;
+    onHash?.(hash);
     const receipt = await tx.wait();
     if (receipt?.status === 1) {
       return {
@@ -473,8 +504,14 @@ export async function forceTransferOnChain(
  * differently, and on a reverting call the hash can appear on the receipt, on
  * the error's `transaction`, or only inside the message text. this walks the
  * likely keys and falls back to the first 32-byte hex string it finds.
+ *
+ * exported because block E needs the same recovery. the SDK's
+ * `manageResponse` reads a hash only from `error.transactionHash`
+ * (`port/out/response/RPCTransactionResponseAdapter.ts:36`), which ethers often
+ * does not set, so a reverted hold would otherwise reach the console as an
+ * exception with no HashScan link.
  */
-function extractHash(e: unknown): string | null {
+export function extractHash(e: unknown): string | null {
   const KEYS = [
     "hash",
     "transactionHash",
@@ -546,7 +583,7 @@ export async function readContractResult(
   return null;
 }
 
-async function findRecentResult(
+export async function findRecentResult(
   cfg: CovenantConfig,
   fromEvm: string,
   tokenEvm: string,

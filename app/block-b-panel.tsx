@@ -9,7 +9,7 @@
 // every state change goes through lib/ats/compliance.ts. every read goes
 // through lib/ats/diagnostics.ts and touches no wallet.
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { hashscanTx, readConfig, type CovenantConfig } from "@/lib/config";
 import { connectWallet, type ConnectResult } from "@/lib/ats/client";
 import { readNoteTokenRef } from "@/lib/ats/token-ref";
@@ -127,6 +127,33 @@ export default function BlockBPanel() {
   const [log, setLog] = useState<string[]>([]);
   const [diag, setDiag] = useState<ComplianceDiagnostics | null>(null);
   const [preflight, setPreflight] = useState<TransferPreflight | null>(null);
+  /**
+   * the account the wallet is on right now, not the one it was on when connect
+   * was pressed. the SDK repairs its own account on `accountsChanged`
+   * (`MetamaskService.ts:151-162`) and signs as whoever is selected; react state
+   * captured at connect time would leave a reassuring banner on screen while the
+   * next signature came from someone else.
+   */
+  const [liveAccount, setLiveAccount] = useState<string | null>(null);
+  /**
+   * transaction hashes as soon as the wallet returns them, before the receipt.
+   * the receipt is ten to thirty seconds behind on this network and the link
+   * works immediately, so the step shows a live HashScan link while it waits
+   * rather than the word "waiting".
+   */
+  const [pendingHash, setPendingHash] = useState<Partial<Record<StepId, string>>>({});
+
+  useEffect(() => {
+    const eth = (globalThis as { ethereum?: { request: (a: unknown) => Promise<unknown>; on?: (e: string, h: (v: string[]) => void) => void; removeListener?: (e: string, h: (v: string[]) => void) => void } }).ethereum;
+    if (!eth) return;
+    const apply = (accounts: string[]) => setLiveAccount(accounts[0] ?? null);
+    eth
+      .request({ method: "eth_accounts" })
+      .then((a) => apply(a as string[]))
+      .catch(() => setLiveAccount(null));
+    eth.on?.("accountsChanged", apply);
+    return () => eth.removeListener?.("accountsChanged", apply);
+  }, []);
 
   const append = useCallback((line: string) => {
     setLog((p) => [...p, `${new Date().toISOString().slice(11, 19)}  ${line}`]);
@@ -163,22 +190,44 @@ export default function BlockBPanel() {
     return d;
   }, [cfg, tokenEvm, watched, transferAmount, append]);
 
+  // the read-back is NOT inside the same try as the transaction, deliberately.
+  // `refresh` issues a few dozen contract calls against a public relay and any
+  // one of them can 429. when it lived inside the try, a rejected read
+  // overwrote a successful step with `{ok:false}` and no hash, so a transaction
+  // that had already landed on chain painted red and its HashScan link vanished.
+  // the three verdict cards key off `results.X.ok`, so all three went dark with
+  // it. a failed read is a warning about the screen, never a verdict about the
+  // chain.
   const run = useCallback(
     async (id: StepId, fn: () => Promise<StepResult>) => {
       setBusy(id);
       setError(null);
+      setPendingHash((p) => ({ ...p, [id]: undefined }));
+      let landed = false;
       try {
         const r = await fn();
         record(id, r);
         r.lines.forEach(append);
-        await refresh();
+        landed = true;
       } catch (e) {
         const text = errorText(e);
         setError(text);
-        record(id, { ok: false, lines: [text] });
+        // merge rather than replace. if an earlier attempt of this step landed,
+        // its hash is evidence and must survive a later failure.
+        setResults((p) => ({
+          ...p,
+          [id]: { ...p[id], ok: false, lines: [text] },
+        }));
         append(`${id} failed`);
       } finally {
         setBusy(null);
+      }
+      if (landed) {
+        try {
+          await refresh();
+        } catch (e) {
+          append(`read-back failed, the transaction is unaffected: ${errorText(e)}`);
+        }
       }
     },
     [record, append, refresh],
@@ -217,7 +266,11 @@ export default function BlockBPanel() {
 
   const stepRoles = () =>
     run("roles", async () => {
-      const r = await grantComplianceRoles(tokenId, cfg.accounts.issuer.id);
+      const r = await grantComplianceRoles(
+        tokenId,
+        cfg.accounts.issuer.id,
+        cfg.accounts.issuer.evm,
+      );
       return {
         ok: true,
         hash: r.transactionId,
@@ -227,7 +280,11 @@ export default function BlockBPanel() {
 
   const stepIssuer = () =>
     run("issuer", async () => {
-      const r = await addCredentialIssuer(tokenId, cfg.accounts.issuer.id);
+      const r = await addCredentialIssuer(
+        tokenId,
+        cfg.accounts.issuer.id,
+        cfg.accounts.issuer.evm,
+      );
       return {
         ok: true,
         hash: r.transactionId,
@@ -237,7 +294,9 @@ export default function BlockBPanel() {
 
   const stepKyc = (id: StepId, who: { label: string; id: string; evm: string }) =>
     run(id, async () => {
-      const r = await grantInternalKyc(cfg, tokenEvm, who.evm);
+      const r = await grantInternalKyc(cfg, tokenEvm, who.evm, {}, (h) =>
+        setPendingHash((p) => ({ ...p, [id]: h })),
+      );
       return {
         ok: r.success,
         hash: r.hash,
@@ -247,7 +306,12 @@ export default function BlockBPanel() {
 
   const stepIssue = () =>
     run("issue", async () => {
-      const r = await issueNotes(tokenId, cfg.accounts.issuer.id, issueAmount);
+      const r = await issueNotes(
+        tokenId,
+        cfg.accounts.issuer.id,
+        issueAmount,
+        cfg.accounts.issuer.evm,
+      );
       return {
         ok: true,
         hash: r.transactionId,
@@ -270,6 +334,7 @@ export default function BlockBPanel() {
         tokenId,
         cfg.accounts.holder.id,
         transferAmount,
+        cfg.accounts.issuer.evm,
       );
       if (!res.blocked) {
         return {
@@ -300,6 +365,7 @@ export default function BlockBPanel() {
         cfg.accounts.holder.evm,
         transferAmount,
         d.decimals,
+        (h) => setPendingHash((p) => ({ ...p, forced: h })),
       );
       return {
         ok: !r.success,
@@ -319,6 +385,7 @@ export default function BlockBPanel() {
         tokenId,
         cfg.accounts.holder.id,
         transferAmount,
+        cfg.accounts.issuer.evm,
       );
       if (res.blocked) {
         return {
@@ -337,9 +404,10 @@ export default function BlockBPanel() {
 
   // ---------------------------------------------------------------------------
 
+  // read off the live wallet, not off the value captured at connect time.
   const issuerConnected =
-    wallet !== null &&
-    wallet.accountId.trim() === cfg.accounts.issuer.id.trim();
+    liveAccount !== null &&
+    liveAccount.toLowerCase() === cfg.accounts.issuer.evm.toLowerCase();
   const ready = tokenId.trim() !== "" && tokenEvm.trim() !== "";
 
   const blocked = results.blocked?.ok || results.forced?.ok;
@@ -359,6 +427,8 @@ export default function BlockBPanel() {
     disabled = false,
   ) => {
     const r = results[id];
+    const live = pendingHash[id];
+    const wrongAccount = liveAccount !== null && !issuerConnected;
     return (
       <section
         className={
@@ -377,13 +447,29 @@ export default function BlockBPanel() {
           )}
         </h3>
         <div className="text-zinc-500">{body}</div>
+        {wrongAccount && (
+          <p className="border-2 border-red-600 bg-red-600 px-2 py-1 font-semibold text-white">
+            wrong account. the wallet is on {liveAccount}. this step must be
+            signed by the issuer {cfg.accounts.issuer.evm} and will refuse.
+          </p>
+        )}
         <button
           onClick={action}
-          disabled={busy !== null || !ready || disabled}
+          disabled={busy !== null || !ready || disabled || wrongAccount}
           className="w-fit border border-zinc-900 px-3 py-1 disabled:opacity-40 dark:border-zinc-100"
         >
           {busy === id ? "waiting..." : label}
         </button>
+        {busy === id && live && (
+          <a
+            className="break-all underline"
+            href={hashscanTx(cfg, live)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            submitted, receipt pending: {hashscanTx(cfg, live)}
+          </a>
+        )}
         {r && (
           <div className="flex flex-col gap-1">
             <pre className="overflow-x-auto whitespace-pre-wrap break-all text-zinc-700 dark:text-zinc-300">
@@ -516,10 +602,12 @@ export default function BlockBPanel() {
             {wallet.accountId} {wallet.evmAddress} on {wallet.network}
           </p>
         )}
-        {wallet && !issuerConnected && (
+        {liveAccount && <p>wallet is on {liveAccount} right now</p>}
+        {liveAccount && !issuerConnected && (
           <p className="border border-amber-600 p-2 text-amber-700 dark:text-amber-400">
-            connected account is not the issuer {cfg.accounts.issuer.id}. every
-            step below will refuse to build a transaction until you switch.
+            the wallet is on {liveAccount}, not the issuer{" "}
+            {cfg.accounts.issuer.evm}. every step below, SDK or raw, reads the
+            live signer and refuses to build a transaction until you switch.
           </p>
         )}
       </section>

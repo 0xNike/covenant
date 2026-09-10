@@ -138,6 +138,42 @@ export interface TokenDiagnostics {
   notes: string[];
 }
 
+/**
+ * every read in this file goes through here.
+ *
+ * `staticNetwork` stops ethers issuing an `eth_chainId` before each call to
+ * re-detect a network that cannot change. on a public relay that is one extra
+ * round trip per call and one more chance of a 429, and the whole console is
+ * read-heavy.
+ */
+function rpc(cfg: CovenantConfig): ethers.JsonRpcProvider {
+  return new ethers.JsonRpcProvider(cfg.rpcNode, undefined, {
+    staticNetwork: true,
+  });
+}
+
+/**
+ * a read that is allowed to fail. returns the fallback and files the reason,
+ * rather than rejecting and taking the whole diagnostic with it.
+ *
+ * this exists because an unguarded read in the middle of a diagnostic is not a
+ * diagnostic, it is a coin flip: one 429 from the relay and the caller sees an
+ * exception where it expected state.
+ */
+async function attempt<T>(
+  notes: string[],
+  label: string,
+  fallback: T,
+  fn: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    notes.push(`${label} failed: ${reason(e)}`);
+    return fallback;
+  }
+}
+
 function reason(e: unknown): string {
   if (typeof e === "object" && e !== null) {
     const anyE = e as { shortMessage?: string; message?: string };
@@ -157,7 +193,7 @@ export async function readTokenDiagnostics(
   idOrAddress: string,
 ): Promise<TokenDiagnostics> {
   const evmAddress = toEvmAddress(idOrAddress);
-  const provider = new ethers.JsonRpcProvider(cfg.rpcNode);
+  const provider = rpc(cfg);
   const token = new ethers.Contract(evmAddress, DIAMOND_ABI, provider);
   const notes: string[] = [];
 
@@ -429,109 +465,115 @@ export async function readComplianceDiagnostics(
   accounts: { label: string; id: string; evm: string }[],
 ): Promise<ComplianceDiagnostics> {
   const evmAddress = toEvmAddress(idOrAddress);
-  const provider = new ethers.JsonRpcProvider(cfg.rpcNode);
+  const provider = rpc(cfg);
   const token = new ethers.Contract(evmAddress, COMPLIANCE_ABI, provider);
   const notes: string[] = [];
 
-  const decimals = Number(await token.decimals());
-  const internalKycActivated: boolean = await token.isInternalKycActivated();
-  const externalKycListsCount = Number(await token.getExternalKycListsCount());
-  const credentialIssuerCount = Number(await token.getIssuerListCount());
+  // every read below is issued in parallel and every one of them is guarded.
+  // sequentially this was 54 calls and about twenty seconds against the public
+  // relay, and any single rejection propagated out of the function. neither is
+  // acceptable in a step the console runs after every transaction.
+  const [
+    decimalsRaw,
+    internalKycActivated,
+    externalKycListsCount,
+    credentialIssuerCount,
+    paused,
+    deactivated,
+    kycGrantedCount,
+    totalSupplyRaw,
+    maxSupplyRaw,
+  ] = await Promise.all([
+    attempt(notes, "decimals()", BigInt(0), async () => await token.decimals()),
+    attempt(notes, "isInternalKycActivated()", false, async () => await token.isInternalKycActivated()),
+    attempt(notes, "getExternalKycListsCount()", BigInt(0), async () => await token.getExternalKycListsCount()),
+    attempt(notes, "getIssuerListCount()", BigInt(0), async () => await token.getIssuerListCount()),
+    attempt(notes, "paused()", false, async () => await token.paused()),
+    attempt(notes, "isDeactivated()", false, async () => await token.isDeactivated()),
+    attempt(notes, "getKycAccountsCount(GRANTED)", BigInt(0), async () => await token.getKycAccountsCount(1)),
+    attempt(notes, "totalSupply()", BigInt(0), async () => await token.totalSupply()),
+    attempt(notes, "getMaxSupply()", BigInt(0), async () => await token.getMaxSupply()),
+  ]);
 
-  let paused = false;
-  try {
-    paused = await token.paused();
-  } catch (e) {
-    notes.push(`paused() reverted: ${reason(e)}`);
-  }
-  let deactivated = false;
-  try {
-    deactivated = await token.isDeactivated();
-  } catch (e) {
-    notes.push(`isDeactivated() reverted: ${reason(e)}`);
-  }
+  const decimals = Number(decimalsRaw);
 
-  let kycGrantedCount = 0;
-  try {
-    kycGrantedCount = Number(await token.getKycAccountsCount(1));
-  } catch (e) {
-    notes.push(`getKycAccountsCount(GRANTED) reverted: ${reason(e)}`);
-  }
+  const out: AccountCompliance[] = await Promise.all(
+    accounts.map(async (a): Promise<AccountCompliance> => {
+      const evm = toEvmAddress(a.evm);
+      const [
+        kycStatusRaw,
+        rawRecord,
+        externallyGranted,
+        isCredentialIssuer,
+        balanceRaw,
+        partitionBalanceRaw,
+        partitions,
+        roles,
+      ] = await Promise.all([
+        attempt(notes, `getKycStatusFor(${a.label})`, BigInt(-1), async () => await token.getKycStatusFor(evm)),
+        attempt(notes, `getKycFor(${a.label})`, null, async () => await token.getKycFor(evm)),
+        attempt(notes, `isExternallyGranted(${a.label})`, true, async () => await token.isExternallyGranted(evm, 1)),
+        attempt(notes, `isIssuer(${a.label})`, false, async () => await token.isIssuer(evm)),
+        attempt(notes, `balanceOf(${a.label})`, BigInt(0), async () => await token.balanceOf(evm)),
+        attempt(notes, `balanceOfByPartition(${a.label})`, BigInt(0), async () =>
+          await token.balanceOfByPartition(PARTITION_1_ID, evm),
+        ),
+        attempt(notes, `partitionsOf(${a.label})`, [] as string[], async () => await token.partitionsOf(evm)),
+        Promise.all(
+          WATCHED_ROLES.map(async (r) => ({
+            name: r.name,
+            held: await attempt(notes, `hasRole(${r.name}, ${a.label})`, false, async () =>
+              await token.hasRole(r.id, evm),
+            ),
+          })),
+        ),
+      ]);
 
-  const out: AccountCompliance[] = [];
-  for (const a of accounts) {
-    const evm = toEvmAddress(a.evm);
-
-    let kycStatus = -1;
-    try {
-      kycStatus = Number(await token.getKycStatusFor(evm));
-    } catch (e) {
-      notes.push(`getKycStatusFor(${a.label}) reverted: ${reason(e)}`);
-    }
-
-    let kycRecord: AccountCompliance["kycRecord"];
-    try {
-      const r = await token.getKycFor(evm);
-      const recordIssuer: string = r.issuer;
-      if (recordIssuer !== ethers.ZeroAddress) {
+      let kycRecord: AccountCompliance["kycRecord"];
+      if (rawRecord && rawRecord.issuer !== ethers.ZeroAddress) {
         kycRecord = {
-          validFrom: r.validFrom.toString(),
-          validTo: r.validTo.toString(),
-          vcId: r.vcId,
-          issuer: recordIssuer,
-          status: Number(r.status),
-          issuerStillRegistered: await token.isIssuer(recordIssuer),
+          validFrom: rawRecord.validFrom.toString(),
+          validTo: rawRecord.validTo.toString(),
+          vcId: rawRecord.vcId,
+          issuer: rawRecord.issuer,
+          status: Number(rawRecord.status),
+          issuerStillRegistered: await attempt(
+            notes,
+            `isIssuer(record issuer of ${a.label})`,
+            false,
+            async () => await token.isIssuer(rawRecord.issuer),
+          ),
         };
       }
-    } catch (e) {
-      notes.push(`getKycFor(${a.label}) reverted: ${reason(e)}`);
-    }
 
-    let externallyGranted = true;
-    try {
-      externallyGranted = await token.isExternallyGranted(evm, 1);
-    } catch (e) {
-      notes.push(`isExternallyGranted(${a.label}) reverted: ${reason(e)}`);
-    }
-
-    const roles: { name: string; held: boolean }[] = [];
-    for (const r of WATCHED_ROLES) {
-      try {
-        roles.push({ name: r.name, held: await token.hasRole(r.id, evm) });
-      } catch {
-        roles.push({ name: r.name, held: false });
-      }
-    }
-
-    out.push({
-      label: a.label,
-      accountId: a.id,
-      evm,
-      kycStatus,
-      kycStatusLabel:
-        kycStatus === 1 ? "GRANTED" : kycStatus === 0 ? "NOT_GRANTED" : "unreadable",
-      kycRecord,
-      externallyGranted,
-      isCredentialIssuer: await token.isIssuer(evm),
-      roles,
-      balance: units(await token.balanceOf(evm), decimals),
-      balanceByPartition1: units(
-        await token.balanceOfByPartition(PARTITION_1_ID, evm),
-        decimals,
-      ),
-      partitions: (await token.partitionsOf(evm)).map((p: string) => p),
-    });
-  }
+      const kycStatus = Number(kycStatusRaw);
+      return {
+        label: a.label,
+        accountId: a.id,
+        evm,
+        kycStatus,
+        kycStatusLabel:
+          kycStatus === 1 ? "GRANTED" : kycStatus === 0 ? "NOT_GRANTED" : "unreadable",
+        kycRecord,
+        externallyGranted,
+        isCredentialIssuer,
+        roles,
+        balance: units(balanceRaw, decimals),
+        balanceByPartition1: units(partitionBalanceRaw, decimals),
+        partitions: (partitions as string[]).map((x) => x),
+      };
+    }),
+  );
 
   return {
     evmAddress,
     decimals,
-    totalSupply: units(await token.totalSupply(), decimals),
-    maxSupply: units(await token.getMaxSupply(), decimals),
+    totalSupply: units(totalSupplyRaw, decimals),
+    maxSupply: units(maxSupplyRaw, decimals),
     internalKycActivated,
-    externalKycListsCount,
-    credentialIssuerCount,
-    kycGrantedCount,
+    externalKycListsCount: Number(externalKycListsCount),
+    credentialIssuerCount: Number(credentialIssuerCount),
+    kycGrantedCount: Number(kycGrantedCount),
     paused,
     deactivated,
     accounts: out,
@@ -560,7 +602,7 @@ export async function readTransferPreflight(
   amount: string,
   decimals: number,
 ): Promise<TransferPreflight> {
-  const provider = new ethers.JsonRpcProvider(cfg.rpcNode);
+  const provider = rpc(cfg);
   const token = new ethers.Contract(
     toEvmAddress(idOrAddress),
     COMPLIANCE_ABI,
@@ -592,5 +634,315 @@ export async function readTransferPreflight(
       ? `the token would permit ${amount} from ${from.label} to ${to.label}`
       : `the token would refuse ${amount} from ${from.label} to ${to.label}: ` +
         `${decoded?.summary ?? "no reason returned"} (EIP-1066 ${statusCode})`,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// block C. rate and coupon diagnostics
+// -----------------------------------------------------------------------------
+//
+// same discipline as everything above: view calls over the configured json-rpc
+// relay, no wallet, no signature, no state change, every call guarded and issued
+// in parallel.
+//
+// this is the read-back that carries the block C claim, and the claim is not
+// "we sent a transaction". it is: the rate the token stamped into the coupon is
+// the rate the engine produced, and the token stamped it, not us. that needs
+// three values side by side, and they are all here: the rate in the token's own
+// storage, the rate recorded on the coupon, and the triplet we actually sent.
+
+const COUPON_ABI = [
+  // InterestRateFacet
+  "function getCouponRateType() view returns (uint8)",
+  // FixedRateFacet
+  "function getRate() view returns (uint256 rate_, uint8 decimals_)",
+  // CouponFacet, contracts/facets/coupon/ICoupon.sol
+  "function getCouponCount() view returns (uint256)",
+  "function getCoupon(uint256 couponID) view returns (((uint256 recordDate, uint256 executionDate, uint256 startDate, uint256 endDate, uint256 fixingDate, uint256 rate, uint8 rateDecimals, uint8 rateStatus) coupon, uint256 snapshotId) registeredCoupon_, bool isDisabled_)",
+  "function getCouponAmountFor(uint256 couponID, address account) view returns ((uint256 numerator, uint256 denominator, bool recordDateReached) couponAmountFor_)",
+  // CouponSecurityHoldersFacet. present on config 2, confirmed live: the call
+  // reverts WrongIndexForAction on a missing coupon, not FunctionNotFound.
+  "function getCouponHolders(uint256 couponID, uint256 pageIndex, uint256 pageLength) view returns (address[])",
+  "function getTotalCouponHolders(uint256 couponID) view returns (uint256)",
+  // MaturityFacet
+  "function getMaturityDate() view returns (uint256)",
+  // NominalValue
+  "function getNominalValue() view returns (uint256)",
+  "function getNominalValueDecimals() view returns (uint8)",
+  // ScheduledCrossOrderedTasksFacet
+  "function scheduledCrossOrderedTaskCount() view returns (uint256)",
+  "function getScheduledCrossOrderedTasks(uint256 pageIndex, uint256 pageLength) view returns ((uint256 scheduledTimestamp, bytes data)[])",
+  // shared
+  "function decimals() view returns (uint8)",
+  "function totalSupply() view returns (uint256)",
+  "function balanceOf(address) view returns (uint256)",
+  "function hasRole(bytes32, address) view returns (bool)",
+  "function paused() view returns (bool)",
+  "function isDeactivated() view returns (bool)",
+];
+
+/**
+ * the three roles block C needs, plus the admin that grants them. hashes from
+ * `contracts/constants/roles.sol` lines 35, 56 and 72, and each one confirmed by
+ * the deployed contract naming it in an `AccountHasNoRole` revert during the
+ * block C dry run.
+ */
+const RATE_ROLES: { name: string; id: string }[] = [
+  {
+    name: "DEFAULT_ADMIN",
+    id: "0x0000000000000000000000000000000000000000000000000000000000000000",
+  },
+  {
+    name: "INTEREST_RATE_MANAGER",
+    id: "0xfa80c71f8de1628faf2c0e9bd02c2f4a3da1f16823b75e61e84b90164a07b4a4",
+  },
+  {
+    name: "CORPORATE_ACTION",
+    id: "0xa1acfc499025c99f55059195e6276f639d34a18aad7b8121b9192b7f438c55cd",
+  },
+  {
+    name: "MATURITY_MANAGER",
+    id: "0xc20b7fd7efe1a2c9f69003a21c2c55c79ef84e16252b62599246ff01f6207314",
+  },
+];
+
+export const RATE_STATUS_LABELS = ["PENDING", "SET"] as const;
+
+export interface CouponEntitlement {
+  label: string;
+  evm: string;
+  /** whole notes held at the record date, as the coupon read them */
+  balance: string;
+  /** exactly the pair `getCouponAmountFor` returned */
+  numerator: string;
+  denominator: string;
+  /** the fraction as a decimal, in the note's nominal currency */
+  amount: string;
+  recordDateReached: boolean;
+}
+
+export interface CouponRecord {
+  couponId: number;
+  recordDate: number;
+  executionDate: number;
+  startDate: number;
+  endDate: number;
+  fixingDate: number;
+  /** the rate as stored on the coupon. under FIXED the token wrote this */
+  rate: string;
+  rateDecimals: number;
+  rateStatus: number;
+  rateStatusLabel: string;
+  ratePercent: string;
+  /** 0 means the scheduled snapshot has not been drained yet */
+  snapshotId: string;
+  isDisabled: boolean;
+  recordDateReached: boolean;
+  /** holders as at the record date, empty before it */
+  holdersOfRecord: string[];
+  totalHolders: number;
+  entitlements: CouponEntitlement[];
+}
+
+export interface CouponDiagnostics {
+  evmAddress: string;
+  decimals: number;
+  totalSupply: string;
+  nominalValue: string;
+  nominalValueDecimals: number;
+  /** 0 NONE, 1 STANDARD, 2 FIXED, 3 KPI_LINKED */
+  couponRateType: number;
+  couponRateTypeLabel: string;
+  /** the rate in the token's own storage. what a FIXED coupon gets stamped with */
+  fixedRate: { raw: string; decimals: number; percent: string } | null;
+  couponCount: number;
+  maturityDate: number;
+  maturityIso: string;
+  secondsToMaturity: number;
+  scheduledTaskCount: number;
+  scheduledTaskTimestamps: number[];
+  paused: boolean;
+  deactivated: boolean;
+  /** roles held by the account that must sign block C */
+  issuerRoles: { name: string; held: boolean }[];
+  coupons: CouponRecord[];
+  nowSeconds: number;
+  notes: string[];
+}
+
+/** 600 at 4 decimals reads as "6.00%". */
+function asPercent(raw: bigint, decimals: number): string {
+  const v = Number(ethers.formatUnits(raw, decimals)) * 100;
+  return `${v.toFixed(2)}%`;
+}
+
+/** integer arithmetic. the numerator and denominator are uint256. */
+function asDecimal(numerator: bigint, denominator: bigint, dp = 6): string {
+  if (denominator === BigInt(0)) return "0";
+  const scale = BigInt(10) ** BigInt(dp);
+  return ethers.formatUnits((numerator * scale) / denominator, dp);
+}
+
+/**
+ * reads the whole rate and coupon picture for a token.
+ *
+ * `accounts` are the parties the console watches. every one of them gets an
+ * entitlement row per coupon whether or not it holds anything, because a zero
+ * entitlement for a party that should have one is exactly the failure this
+ * screen has to make visible.
+ */
+export async function readCouponDiagnostics(
+  cfg: CovenantConfig,
+  idOrAddress: string,
+  accounts: { label: string; id: string; evm: string }[],
+): Promise<CouponDiagnostics> {
+  const evmAddress = toEvmAddress(idOrAddress);
+  const provider = rpc(cfg);
+  const token = new ethers.Contract(evmAddress, COUPON_ABI, provider);
+  const notes: string[] = [];
+
+  const [
+    decimalsRaw,
+    totalSupplyRaw,
+    nominalValueRaw,
+    nominalValueDecimalsRaw,
+    rateTypeRaw,
+    ratePair,
+    couponCountRaw,
+    maturityRaw,
+    taskCountRaw,
+    tasks,
+    paused,
+    deactivated,
+    issuerRoles,
+  ] = await Promise.all([
+    attempt(notes, "decimals()", BigInt(0), async () => await token.decimals()),
+    attempt(notes, "totalSupply()", BigInt(0), async () => await token.totalSupply()),
+    attempt(notes, "getNominalValue()", BigInt(0), async () => await token.getNominalValue()),
+    attempt(notes, "getNominalValueDecimals()", BigInt(0), async () => await token.getNominalValueDecimals()),
+    attempt(notes, "getCouponRateType()", BigInt(-1), async () => await token.getCouponRateType()),
+    attempt(notes, "getRate()", null, async () => await token.getRate()),
+    attempt(notes, "getCouponCount()", BigInt(0), async () => await token.getCouponCount()),
+    attempt(notes, "getMaturityDate()", BigInt(0), async () => await token.getMaturityDate()),
+    attempt(notes, "scheduledCrossOrderedTaskCount()", BigInt(0), async () =>
+      await token.scheduledCrossOrderedTaskCount(),
+    ),
+    attempt(notes, "getScheduledCrossOrderedTasks()", [] as { scheduledTimestamp: bigint }[], async () =>
+      await token.getScheduledCrossOrderedTasks(0, 20),
+    ),
+    attempt(notes, "paused()", false, async () => await token.paused()),
+    attempt(notes, "isDeactivated()", false, async () => await token.isDeactivated()),
+    Promise.all(
+      RATE_ROLES.map(async (r) => ({
+        name: r.name,
+        held: await attempt(notes, `hasRole(${r.name}, issuer)`, false, async () =>
+          await token.hasRole(r.id, toEvmAddress(cfg.accounts.issuer.evm)),
+        ),
+      })),
+    ),
+  ]);
+
+  const decimals = Number(decimalsRaw);
+  const couponCount = Number(couponCountRaw);
+  const maturityDate = Number(maturityRaw);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  const coupons: CouponRecord[] = await Promise.all(
+    Array.from({ length: couponCount }, (_, i) => i + 1).map(
+      async (couponId): Promise<CouponRecord> => {
+        const raw = await attempt(notes, `getCoupon(${couponId})`, null, async () =>
+          await token.getCoupon(couponId),
+        );
+        const c = raw?.[0]?.coupon;
+        const recordDate = c ? Number(c.recordDate) : 0;
+        const recordDateReached = recordDate !== 0 && recordDate < nowSeconds;
+
+        const [holdersOfRecord, totalHolders, entitlements] = await Promise.all([
+          attempt(notes, `getCouponHolders(${couponId})`, [] as string[], async () =>
+            await token.getCouponHolders(couponId, 0, 50),
+          ),
+          attempt(notes, `getTotalCouponHolders(${couponId})`, BigInt(0), async () =>
+            await token.getTotalCouponHolders(couponId),
+          ),
+          Promise.all(
+            accounts.map(async (a): Promise<CouponEntitlement> => {
+              const evm = toEvmAddress(a.evm);
+              const [amountPair, balanceRaw] = await Promise.all([
+                attempt(notes, `getCouponAmountFor(${couponId}, ${a.label})`, null, async () =>
+                  await token.getCouponAmountFor(couponId, evm),
+                ),
+                attempt(notes, `balanceOf(${a.label})`, BigInt(0), async () =>
+                  await token.balanceOf(evm),
+                ),
+              ]);
+              const numerator = amountPair ? BigInt(amountPair.numerator) : BigInt(0);
+              const denominator = amountPair ? BigInt(amountPair.denominator) : BigInt(0);
+              return {
+                label: a.label,
+                evm,
+                balance: ethers.formatUnits(balanceRaw, decimals),
+                numerator: numerator.toString(),
+                denominator: denominator.toString(),
+                amount: asDecimal(numerator, denominator),
+                recordDateReached: Boolean(amountPair?.recordDateReached),
+              };
+            }),
+          ),
+        ]);
+
+        return {
+          couponId,
+          recordDate,
+          executionDate: c ? Number(c.executionDate) : 0,
+          startDate: c ? Number(c.startDate) : 0,
+          endDate: c ? Number(c.endDate) : 0,
+          fixingDate: c ? Number(c.fixingDate) : 0,
+          rate: c ? c.rate.toString() : "0",
+          rateDecimals: c ? Number(c.rateDecimals) : 0,
+          rateStatus: c ? Number(c.rateStatus) : 0,
+          rateStatusLabel: c
+            ? (RATE_STATUS_LABELS[Number(c.rateStatus)] ?? "unreadable")
+            : "unreadable",
+          ratePercent: c ? asPercent(BigInt(c.rate), Number(c.rateDecimals)) : "0.00%",
+          snapshotId: raw ? String(raw[0].snapshotId) : "0",
+          isDisabled: Boolean(raw?.[1]),
+          recordDateReached,
+          holdersOfRecord: (holdersOfRecord as string[]).map((h) => h),
+          totalHolders: Number(totalHolders),
+          entitlements,
+        };
+      },
+    ),
+  );
+
+  return {
+    evmAddress,
+    decimals,
+    totalSupply: ethers.formatUnits(totalSupplyRaw, decimals),
+    nominalValue: ethers.formatUnits(nominalValueRaw, Number(nominalValueDecimalsRaw)),
+    nominalValueDecimals: Number(nominalValueDecimalsRaw),
+    couponRateType: Number(rateTypeRaw),
+    couponRateTypeLabel: RATE_TYPE_LABELS[Number(rateTypeRaw)] ?? "unreadable",
+    fixedRate: ratePair
+      ? {
+          raw: ratePair[0].toString(),
+          decimals: Number(ratePair[1]),
+          percent: asPercent(BigInt(ratePair[0]), Number(ratePair[1])),
+        }
+      : null,
+    couponCount,
+    maturityDate,
+    maturityIso: maturityDate ? new Date(maturityDate * 1000).toISOString() : "",
+    secondsToMaturity: maturityDate ? maturityDate - nowSeconds : 0,
+    scheduledTaskCount: Number(taskCountRaw),
+    scheduledTaskTimestamps: (tasks as { scheduledTimestamp: bigint }[]).map((t) =>
+      Number(t.scheduledTimestamp),
+    ),
+    paused,
+    deactivated,
+    issuerRoles,
+    coupons,
+    nowSeconds,
+    notes,
   };
 }
