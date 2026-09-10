@@ -6,9 +6,10 @@
 line there. where a line is not yet filled, this document says so with a placeholder, not with
 a claim.
 
-**status at time of writing, 10 sep 2026.** one gate is verified on chain. three more are built
-and dry-run against the live token, correct against source, but not yet signed. this document
-is written to be updated as those signatures land, not rewritten. see the gate table below.
+**status at time of writing, 11 sep 2026.** three gates are verified on chain: issuance, the
+compliance gate, and the coupon. a complete, submittable hedera entry exists. the fourth,
+KPI posting and the collateral hold, is not yet built. this document is written to be updated
+as further signatures land, not rewritten. see the gate table below.
 
 ---
 
@@ -26,8 +27,8 @@ tokenization studio (ATS), against the pre-deployed resolver `0.0.9212226` and f
 
 | gate | requirement | status | evidence |
 |---|---|---|---|
-| 1 | ATS used to issue and manage a tokenised asset | issuance is verified; management (compliance gate, coupon, collateral hold) is built and dry-run against the live token, awaiting signature | issuance: see below. management: `[G2 tx: pending]`, `[G3 tx: pending]`, `[G4 tx: pending]` |
-| 2 | deployed and demonstrated on hedera testnet | issuance demonstrated; the remaining lifecycle operations are demonstrated once the gates below turn green | see gate table |
+| 1 | ATS used to issue and manage a tokenised asset | issuance, the compliance gate and the coupon are verified on chain; the collateral hold is not yet built | issuance, G2 and G3: see below. hold: `[G4 tx: pending]` |
+| 2 | deployed and demonstrated on hedera testnet | issuance, the compliance gate and the coupon are demonstrated on hedera testnet; the collateral hold is demonstrated once G4 turns green | see gate table |
 | 3 | public github repository, contracts verified on hashscan where applicable | repository is public at the link above. we deploy no contracts, so there is nothing to verify on hashscan in that sense; instead we show the token deployment and every lifecycle transaction directly on hashscan | `[repository visibility confirmed: pending]` |
 | 4 | demo video, five minutes or less, showing issuance, configuration and at least one lifecycle operation | scripted in `docs/video-script.md`, not yet cut | `[video link: pending]` |
 
@@ -49,24 +50,62 @@ issuer account `0.0.10424387`.
 full independent verification method, run against the mirror node and the testnet json-rpc
 relay rather than against this project's own console, is in `EVIDENCE.md` G1.
 
-### management, built and dry-run, not yet signed
+### G2, compliance, verified
 
-the following are implemented against the sdk, exercised in dry-run against the live token
-`0.0.10450229`, and correct against the source cited. none of them has a transaction id yet. we
-do not claim they ran. they will, before this document is finalised, and the placeholders below
-will be replaced with hashscan links, not with new prose.
+signed by the issuer, `0.0.10424387`, throughout. a transfer of 250.00 notes to the note holder,
+`0.0.10444395`, is rejected by the token itself; kyc is granted through the token's internal
+`Kyc.grantKyc` facet; the same calldata, byte for byte, then succeeds.
 
-- **G2, compliance.** a transfer to an unverified account is rejected by the token itself; kyc
-  is granted through the token's internal registry; the same transfer succeeds. `[G2 tx:
-  pending]` for each of the three steps.
-- **G3, coupon.** `setCouponRateType(FIXED)`, then `setCoupon` with the pending rate triplet,
-  then a read of the resulting entitlement. `[G3 tx: pending]`.
-- **G4, rate and collateral.** the engine's rate posted through `FixedRate.setRate`, then a
-  collateral hold created via `createHoldByPartition` and resolved by the engine's escrow
-  account, one instrument released and one executed on default. `[G4 tx: pending]`.
+| step | transaction | result |
+|---|---|---|
+| `transferByPartition`, blocked | [`0x904d61ccdf76b03262f8cea279cffe16016e98856276b218ec6f61ab9849ade5`](https://hashscan.io/testnet/transaction/0x904d61ccdf76b03262f8cea279cffe16016e98856276b218ec6f61ab9849ade5) | `CONTRACT_REVERT_EXECUTED` |
+| `grantKyc` (holder) | [`0x15e3d2a0590741fa0b6f07c5966d88ba8f08c2753fdf08474b219e58720f375a`](https://hashscan.io/testnet/transaction/0x15e3d2a0590741fa0b6f07c5966d88ba8f08c2753fdf08474b219e58720f375a) | `SUCCESS` |
+| `transferByPartition`, same calldata, now permitted | [`0x582b822d7e8e99bd5c948211d55c464215e9a4265e38028265ce50a5b68ae6e5`](https://hashscan.io/testnet/transaction/0x582b822d7e8e99bd5c948211d55c464215e9a4265e38028265ce50a5b68ae6e5) | `SUCCESS` |
 
-**gates 1 through 3 alone are a complete, submittable hedera entry.** everything past that is
-upside, not a requirement we are short of. see `specs/00-mission.md`'s ship order.
+full nine-transaction sequence, including the prerequisite role grants and mint, and one
+redundant `grantKyc` that correctly reverts because the holder was already granted:
+`EVIDENCE.md` G2.
+
+**the compliance claim, proven twice.** the sdk's own `checkCanTransfer` refuses the blocked
+transfer client-side, before any transaction is built, so that refusal leaves nothing on chain
+to verify independently. to put a genuinely reverted transaction on chain, we also forced one
+raw attempt, bypassing the sdk's client-side check the same way we called
+`setCouponRateType` directly, below: the blocked transfer above reverts with `error_message`
+`0xfc855b1b0000000000000000000000007b3f60333a54e03c4ee4240d2ba2f9600c502e1e`. selector
+`0xfc855b1b` is `InvalidKycStatus()`, recomputed independently and matched against
+`facets/kyc/IKyc.sol:57`; the trailing word decodes to the holder's own address. both refusals
+are real. **a judge can verify only the second one**, directly on hashscan, without trusting
+anything we say: the client-side refusal happens before a transaction exists and leaves no
+chain record.
+
+### G3, coupon, verified. the strongest single fact in the project
+
+signed by the issuer throughout, token `0.0.10450229` unchanged since G1/G2. eight
+transactions: `applyRoles`, `setCouponRateType(FIXED)`, `FixedRate.setRate(600, 4)`,
+`setCoupon`, the internal scheduled-task queue drain, `grantRole` for
+`ROLE_MATURITY_MANAGER`, `updateMaturityDate`, and a settlement transfer in HBAR. full table
+and every check: `EVIDENCE.md` G3.
+
+- `setCouponRateType(FIXED)`:
+  [`0xb0677394cef05a6324b900e349e522e577c19f4b05dbaf10d8a0739d50f358cc`](https://hashscan.io/testnet/transaction/0xb0677394cef05a6324b900e349e522e577c19f4b05dbaf10d8a0739d50f358cc)
+- `FixedRate.setRate(600, 4)`:
+  [`0x9c92091520459b23d95608e3d10e4466016f29550ebdc3f386c96ee62684439d`](https://hashscan.io/testnet/transaction/0x9c92091520459b23d95608e3d10e4466016f29550ebdc3f386c96ee62684439d)
+- `setCoupon` (pending triplet):
+  [`0x436298a6b0573ea3fe55fcb28e2b018f09b3e4465b2305d24b3f324c1318adf1`](https://hashscan.io/testnet/transaction/0x436298a6b0573ea3fe55fcb28e2b018f09b3e4465b2305d24b3f324c1318adf1)
+- `updateMaturityDate`:
+  [`0x98e9a148cef1403825421a52f9f8f26571b553b20b9d3cf75a6596e4bcbb4b33`](https://hashscan.io/testnet/transaction/0x98e9a148cef1403825421a52f9f8f26571b553b20b9d3cf75a6596e4bcbb4b33)
+- settlement transfer in HBAR:
+  [`0x98043075ddd2ddecb63a8b93f7a9c11b59c0e91e4e2cbfa016cd699dd87f8404`](https://hashscan.io/testnet/transaction/0x98043075ddd2ddecb63a8b93f7a9c11b59c0e91e4e2cbfa016cd699dd87f8404)
+
+`setCoupon` was sent with the pending triplet, `rate = 0`, `rateDecimals = 0`,
+`rateStatus = PENDING`. the `CouponSet` event that same transaction emitted carries the coupon
+as stored: `rate = 600`, `rateDecimals = 4`, `rateStatus = SET`. **we never named 600.** the
+token refused the caller's rate and priced the coupon from a storage slot `FixedRate.setRate`
+had written 33 seconds earlier, through a separately role-gated call. this is examined in full
+under "the rate leg, precisely" below.
+
+**gates 1 through 3 together are a complete, submittable hedera entry.** the collateral hold,
+G4, is upside, not a requirement we are short of. see `specs/00-mission.md`'s ship order.
 
 ---
 
@@ -74,24 +113,38 @@ upside, not a requirement we are short of. see `specs/00-mission.md`'s ship orde
 
 ### compliance controls
 
-the token is issued with `internalKycActivated: true`. a transfer to an account without a kyc
-grant is rejected before any transaction reaches the network. the sdk's own
-`checkCanTransfer` pre-check throws client-side, so the blocked step is evidenced as a thrown
-sdk error and an `eth_call` returning false, not a failed hashscan transaction (this is a
-property of the sdk's validation path, not of our build; see the integration note in the
-open-source writeup). kyc is then granted through the token's own internal `Kyc.grantKyc`
-facet, carrying a placeholder credential identifier that the contract stores and never
-verifies. **we do not claim to have verified anyone's identity.** we claim, and only claim,
-that we exercised the token's compliance gate: the same transfer that was rejected now
-succeeds, with a hashscan link. `[G2 tx: pending]`.
+the token is issued with `internalKycActivated: true`. a transfer of 250.00 notes from the
+issuer to the note holder, `0.0.10444395`, without a kyc grant, is proven blocked two ways.
+first, the sdk's own `checkCanTransfer` pre-check throws client-side, before any transaction is
+built, so that refusal leaves nothing on chain to verify independently (a property of the sdk's
+validation path, not of our build; see the integration note in the open-source writeup).
+second, we forced the same calldata through directly, bypassing that client-side check, and it
+reverted on chain:
+[`0x904d61ccdf76b03262f8cea279cffe16016e98856276b218ec6f61ab9849ade5`](https://hashscan.io/testnet/transaction/0x904d61ccdf76b03262f8cea279cffe16016e98856276b218ec6f61ab9849ade5),
+`error_message` decoding to selector `0xfc855b1b`, `InvalidKycStatus()`, with the holder's own
+address appended as the offending account. **a judge can verify only the second refusal**,
+directly on hashscan; the client-side one leaves no chain record to check. kyc is then granted
+through the token's own internal `Kyc.grantKyc` facet
+([`0x15e3d2a0590741fa0b6f07c5966d88ba8f08c2753fdf08474b219e58720f375a`](https://hashscan.io/testnet/transaction/0x15e3d2a0590741fa0b6f07c5966d88ba8f08c2753fdf08474b219e58720f375a)),
+carrying a placeholder credential identifier that the contract stores and never verifies. **we
+do not claim to have verified anyone's identity.** we claim, and only claim, that we exercised
+the token's compliance gate: the same calldata that was rejected now succeeds,
+[`0x582b822d7e8e99bd5c948211d55c464215e9a4265e38028265ce50a5b68ae6e5`](https://hashscan.io/testnet/transaction/0x582b822d7e8e99bd5c948211d55c464215e9a4265e38028265ce50a5b68ae6e5).
 
 ### coupon distributions
 
 `setCoupon` records rate and dates on chain and the holder list is read from the chain via
-`getCouponHolders`. paying holders is a separate, off-chain step; ATS has no `pay` method on
-the coupon facet (confirmed by reading the full `ICoupon.sol` interface, `specs/05` §3). what
-we claim is the on-chain declaration and the resulting on-chain entitlement, not a push
-payment. `[G3 tx: pending]`.
+`getCouponFor` / `getCouponAmountFor`. paying holders is a separate, off-protocol step, a plain
+HBAR transfer rather than an ATS transaction; ATS has no
+`pay` method on the coupon facet (confirmed by reading the full `ICoupon.sol` interface,
+`specs/05` §3). what we claim is the on-chain declaration and the resulting on-chain
+entitlement, not a push payment:
+[`0x436298a6b0573ea3fe55fcb28e2b018f09b3e4465b2305d24b3f324c1318adf1`](https://hashscan.io/testnet/transaction/0x436298a6b0573ea3fe55fcb28e2b018f09b3e4465b2305d24b3f324c1318adf1)
+declared the coupon; the settlement that follows it,
+[`0x98043075ddd2ddecb63a8b93f7a9c11b59c0e91e4e2cbfa016cd699dd87f8404`](https://hashscan.io/testnet/transaction/0x98043075ddd2ddecb63a8b93f7a9c11b59c0e91e4e2cbfa016cd699dd87f8404),
+is a plain HBAR transfer the agent signs, not an ATS operation. see "the rate leg, precisely"
+below for what `setCoupon` actually did, and "what `setCoupon` proved, and what it did not"
+for what this gate does and does not settle in value.
 
 ### oracle and NAV
 
@@ -169,6 +222,63 @@ is invertible. we do not claim otherwise.
 
 ---
 
+## what `setCoupon` proved, and what it did not
+
+**the strongest single fact in the project.** `setCoupon` was sent with the pending triplet,
+`rate = 0`, `rateDecimals = 0`, `rateStatus = PENDING`
+([`0x436298a6b0573ea3fe55fcb28e2b018f09b3e4465b2305d24b3f324c1318adf1`](https://hashscan.io/testnet/transaction/0x436298a6b0573ea3fe55fcb28e2b018f09b3e4465b2305d24b3f324c1318adf1)).
+the `CouponSet` event that same transaction emitted carries the coupon as stored: `rate = 600`,
+`rateDecimals = 4`, `rateStatus = SET`. **we never named 600.** the token refused the caller's
+rate and priced the coupon from a storage slot `FixedRate.setRate` had written 33 seconds
+earlier
+([`0x9c92091520459b23d95608e3d10e4466016f29550ebdc3f386c96ee62684439d`](https://hashscan.io/testnet/transaction/0x9c92091520459b23d95608e3d10e4466016f29550ebdc3f386c96ee62684439d)),
+through a separately role-gated call. anyone can decode the same transaction and check it,
+without trusting our transcript.
+
+stated with its real limits, not overstated. the same account holds both the rate-setting role
+and the coupon-declaring role in this demo. nothing on chain binds `600` to the confidential
+engine specifically. `setRate` can be called again at any time, so `RateType.FIXED` does not
+mean locked, only that a coupon is priced from storage rather than from its own caller. what the
+protocol enforces is that the rate is one of record, not one chosen per coupon. the binding to
+the engine is ours to claim, and it is checkable a different way: `rateForKpi` is published
+(`lib/ats/note-terms.ts`), and `rateForKpi(200) == 600` is exactly what the token's own
+`getRate()` returns.
+
+**ordering, as a chain fact, not an assumption.** `getCouponRateType()` flipped to FIXED at
+block `40348683` while `getCouponCount()` was still `0`, and stayed `0` for 34 further blocks
+until `setCoupon` landed at block `40348717`. the switch happened strictly before any coupon
+existed. this matters because `InterestRate.sol:38` carries an unresolved maintainer TODO on
+whether switching rate type is safe once a coupon already exists; we did not test that path,
+and it is a real open question in the sdk we are relying on, not settled by our transaction.
+
+**three things this gate does and does not settle, stated before a judge finds them
+unstated.**
+
+1. **ATS declared the coupon and moved no value.** the coupon facet has no `pay` method.
+   entitlements became readable through `getCouponFor` / `getCouponAmountFor`. the cash leg is a
+   separate HBAR transfer the agent signs
+   ([`0x98043075ddd2ddecb63a8b93f7a9c11b59c0e91e4e2cbfa016cd699dd87f8404`](https://hashscan.io/testnet/transaction/0x98043075ddd2ddecb63a8b93f7a9c11b59c0e91e4e2cbfa016cd699dd87f8404)),
+   at a stated demo scale of 1 HBAR per 1,000 of entitlement, because the entitlement is
+   denominated in the note's own currency and testnet has no such instrument to move. not an
+   exchange rate, a scale factor stated once and applied once. the issuer holds 750 of 1,000
+   notes and did not pay itself: no transaction anywhere on this token's history moves value to
+   the issuer.
+2. **the accrual window is backdated a full quarter.** the coupon's own `startDate` is
+   2026-06-12 and its `endDate` is 2026-09-10, roughly ninety days, so the entitlement is sized
+   the way a real quarterly coupon would be. the token itself was created 2026-09-09, one day
+   before that window closes. the window sits mostly before the token existed. this is a demo
+   compression, stated here rather than left for a viewer to notice.
+3. **the token's own `name()` still reads "Covenant KPI-Linked Private Credit Note 2029," and
+   its maturity now reads 2026-09-11**, permanently and publicly, because `updateMaturityDate`
+   compressed a three-year lifecycle into this demo. a judge opening the token on hashscan sees
+   both. and the token carries no KPI facet at all: config `0x...02` has `CouponFacet` and
+   `InterestRateFacet`, not `KpisFacet` or `KpiLinkedRateFacet`, because the kpi-linked
+   configuration cannot be deployed against by any working path (`BUG.md` B1). "KPI-Linked" in
+   the name describes the instrument covenant models, not a claim about what facet runs on this
+   token.
+
+---
+
 ## the confidentiality claim, exactly
 
 the borrower's revenue, EBITDA, total debt, cash and interest expense never leave the engine.
@@ -231,8 +341,9 @@ per "the confidentiality claim" above.
   verdict, the kpi value and the haircut off a screen and signs the transaction that carries
   them onto the chain. nothing on hedera verifies that the published computation is what ran.
   see `docs/architecture.md` for exactly where that boundary sits.
-- the coupon payment and the lender's cash advance are both off chain, tracked in the console.
-  `setCoupon` records terms and the holder list is read from the chain; moving money is not
+- the coupon settlement is a plain HBAR transfer signed by the agent, not an ATS operation, and
+  the lender's cash advance (once G4 lands) will be the same shape. `setCoupon` records terms
+  on chain and makes the entitlement readable; moving money against that entitlement is not
   itself an ATS transaction.
 
 full account in [`README.md`](../README.md) §"what is real and what is not", which this
@@ -242,12 +353,8 @@ document does not repeat beyond what is specific to this prize's gates.
 
 ## what to fill in before this document is final
 
-every placeholder above, collected:
+G2 and G3 are filled in above, with hashscan links, and no longer placeholders. what remains:
 
-- `[G2 tx: pending]`, three transactions: blocked transfer evidence, the kyc grant, the
-  permitted transfer.
-- `[G3 tx: pending]`, `setCouponRateType(FIXED)`, `setCoupon`, and the resulting
-  `getCouponFor` read.
 - `[G4 tx: pending]`, `FixedRate.setRate`, `createHoldByPartition` (two instruments),
   `releaseHoldByPartition`, `executeHoldByPartition`.
 - `[repository visibility confirmed: pending]`, confirm the repository is public before
