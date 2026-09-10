@@ -30,7 +30,9 @@ and hermes integrates.
 1. bond issued on testnet, on hashscan
 2. kyc blocks a transfer, grant, same transfer succeeds
 3. coupon distributed
-4. kpi posted via `addKpiData`, rate steps
+4. `setCouponRateType(FIXED)` before the first coupon, then the engine's rate posted by
+   a role-gated `setRate` and stamped into a coupon by the token. **not `addKpiData`**,
+   which is unreachable, see `BUG.md` B1
 5. hold created, then executed on default
 6. confidential engine behind a CRE `handlerInTee`
 7. video, README, writeups, links, upstream PR

@@ -447,3 +447,61 @@ the finance sense only.** write "repository" in full in judge-facing artifacts.
 em-dashes have been stripped from `.env.example`, all nine charters and
 `specs/03-upstream-workflows.md`. `CLAUDE.md` and `PROJECT_BRIEF.md` keep theirs, being
 internal and in hao's own register.
+
+---
+
+## D16. the rate leg restated truthfully, and `setCouponRateType(FIXED)` is now load-bearing
+
+apollo's second review. hao approved the rewrite.
+
+**what was false.** `PROJECT_BRIEF.md` §3 step 5 and §11 item 4 said the KPI is posted via
+`addKpiData` and the KPI-linked rate mechanism steps the coupon automatically. none of that
+happens. `specs/00-mission.md:33` repeated it. we are on a config-2 token, which carries no
+`KpisFacet` and no `KpiLinkedRateFacet`, because config 4 cannot be deployed against by any
+path (`BUG.md` B1).
+
+**the thing apollo found that neither hermes nor gamma had.** we had accepted
+`RateType.STANDARD` as given because `deployBond` hardcodes it. it is not given. config 2
+carries `InterestRateFacet`, which exposes `setCouponRateType`
+(`facets/interestRate/IInterestRate.sol:67`), gated by `ROLE_INTEREST_RATE_MANAGER`, a role
+we were already granting. **one extra transaction.**
+
+the difference is the whole second differentiator:
+
+- **STANDARD** (`CouponRateDispatch.validateAndStamp:96-98`): the caller hands the token a
+  rate and the token stores whatever it is handed. no rate logic. our console types a number
+  into a struct field. **apollo's verdict: on this path we collapse into a bond with a
+  privacy story bolted on**, which §4 explicitly says we moved away from being
+- **FIXED** (`:85-89`): the token **reverts with `InterestRateIsFixed()` if the caller
+  supplies any rate at all**, reads the rate from its own storage, and stamps every coupon
+  itself. the rate reaches storage only through `FixedRate.setRate`
+  (`facets/fixedRate/FixedRate.sol:29-36`), a separate role-gated transaction emitting
+  `RateUpdated`, whose entire payload is the engine's output
+
+**hard ordering constraint.** `InterestRate.sol:38` carries a maintainer TODO: "check if
+changing the rate type is allowed after existing coupons have been issued". they do not know.
+**so we switch before the first `setCoupon`, not after.** that TODO is also an honest line
+for the writeup's feedback section.
+
+`setCouponRateType` is not exposed anywhere in `port/in`, so it is a direct ethers call.
+gamma must confirm one thing before block C: that `BigDecimal.fromString("0")` yields
+`decimals === 0`, so the pending triplet reaches the contract. if it does not, this path is
+dead and that is itself a bug report.
+
+**what §3 step 5 now says**, and zeus writes from this, not from memory of the old version:
+the engine's leverage reading is converted to a rate off chain against bounds published at
+issuance, posted by a role-gated `setRate`, and ATS stamps every coupon from token storage.
+then plainly what we could not use and why.
+
+**one ordering rule apollo insisted on and it is right.** the on-chain version would publish
+the borrower's leverage ratio to a public ledger, and in real private credit a covenant
+compliance certificate goes to lenders under an NDA. so the substitute discloses strictly
+less. **that must never lead.** say what we could not do, then why, then one sentence that
+the substitute discloses less. in that order it is a design observation. in the other order
+it is an excuse for a limitation we did not choose.
+
+**the thesis was never at risk.** apollo re-read §4: the load-bearing claim is a lender
+pricing a risk it may not inspect, carried by the haircut, `Hold.escrow`, and the
+release-versus-execute fork. all present on config 2, escrow `0.0.10445014` distinct from the
+agent `0.0.10424387`. what config 2 costs is sponsor-product depth, which is a real loss and
+a smaller one than it felt.

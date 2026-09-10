@@ -53,8 +53,22 @@ private credit note.
 3. **Distribute** a coupon to holders of record.
 4. **Compute confidentially.** The engine ingests private borrower financials and outputs a
    covenant verdict, a KPI value and a haircut.
-5. **Reprice.** The KPI is posted via `addKpiData`, and the KPI-linked rate mechanism steps
-   the coupon automatically. ATS owns this mechanism; we feed it.
+5. **Reprice.** The engine's leverage reading is converted to a coupon rate off chain,
+   against bounds fixed and published at issuance, and posted to the token by a role-gated
+   `setRate` transaction. From there ATS owns it: under `RateType.FIXED` the token refuses
+   any rate supplied by the caller and stamps every coupon from its own storage, so what a
+   holder is paid comes from token state rather than from our application.
+
+   The conversion from a KPI reading to a rate would have happened on chain, inside ATS's
+   own `KpiLinkedRateFacet`. **We could not use it.** That configuration is registered in
+   the deployed resolver and cannot be deployed against by any path, which is our upstream
+   bug report. See `BUG.md` B1.
+
+   One consequence worth stating, but never as the lead: the on-chain version would publish
+   the borrower's leverage ratio to a public ledger. In real private credit a covenant
+   compliance certificate goes to lenders under an NDA, not to everyone. The substitute
+   discloses strictly less. That is an observation, not the reason we did it.
+
 6. **Collateralise.** The note holder pledges the note via `createHoldByPartition`, naming
    the engine as `escrow`. The lender advances cash at the computed haircut.
 7. **Resolve.** Repayment → `releaseHoldByPartition`. Default → `executeHoldByPartition`,
@@ -93,10 +107,16 @@ check the execution or the inputs. We remove one of those two unknowns and say e
 A trusted third party could compute the same haircut, but then the lender trusts that party's
 execution *and* its confidentiality. Attestation is the difference, and it is a real one.
 
-Second differentiator: `createKpiLinkedRate` and `addKpiData` are first-class ATS methods
-that almost nobody will notice. Feeding a confidential computation into a native ATS
-repricing mechanism uses far more of the sponsor's own product than a generic bond with a
-privacy layer bolted on.
+Second differentiator: we drive a native ATS rate mechanism from a confidential
+computation. The engine's output reaches the token through a role-gated `setRate`, and under
+`RateType.FIXED` the token applies it to every coupon itself, rejecting any rate a caller
+tries to supply. That is protocol state, not an application field.
+
+We had intended to use `createKpiLinkedRate` and `addKpiData`, which are first-class ATS
+methods almost nobody will notice. Neither is reachable: `createKpiLinkedRate` calls a
+factory function that exists only on a test mock, and the KPI-linked configuration cannot be
+deployed against at all. Establishing that, from source and on chain, is our contribution to
+the harness track.
 
 ---
 
@@ -249,7 +269,8 @@ Ship order. Each line must be true before the next is attempted.
 1. A bond is issued on Hedera testnet and visible on HashScan.
 2. A transfer is blocked by KYC, a grant is issued, the same transfer succeeds. Recorded.
 3. A coupon is distributed to holders.
-4. A KPI is posted via `addKpiData` and the rate steps.
+4. `setCouponRateType(FIXED)` is called **before the first coupon**, then the engine's
+   rate is posted by a role-gated `setRate` and the token stamps a coupon from it.
 5. A hold is created, then executed on default. Recorded.
 6. Confidential engine swapped behind a CRE `handlerInTee`, simulation evidence captured.
 7. Video ≤5 min, README, per-prize writeups, HashScan links, upstream PR.
