@@ -946,3 +946,339 @@ export async function readCouponDiagnostics(
     notes,
   };
 }
+
+// -----------------------------------------------------------------------------
+// block E. collateral hold diagnostics
+// -----------------------------------------------------------------------------
+//
+// same discipline as everything above: view calls over the configured json-rpc
+// relay, no wallet, no signature, no state change, every call guarded.
+//
+// this is the read-back argus gates block E on, and the gate is two fields.
+// `escrow_` must be the engine account and `destination_` must be the lender,
+// both read off the token rather than off our own state. that pair is the
+// checkable form of the entire thesis:
+//
+//   escrow = engine       the agent cannot decide release versus execute
+//   destination = lender  the escrow cannot send the collateral anywhere else
+//
+// `HoldStorageWrapper._validateExecuteHold` (`:1086-1088`) skips the destination
+// check when `hold.to == address(0)`, so an unpinned destination would leave the
+// escrow free to send the notes to any address it liked. reading both back is
+// how we show neither is true here.
+
+const HOLD_ABI = [
+  // HoldByPartition facet, contracts/facets/holdByPartition/IHoldByPartition.sol:146-159
+  "function getHoldForByPartition((bytes32 partition, address tokenHolder, uint256 holdId) holdIdentifier) view returns (uint256 amount_, uint256 expirationTimestamp_, address escrow_, address destination_, bytes data_, bytes operatorData_, uint8 thirdPartyType_)",
+  "function getHoldsIdForByPartition(bytes32 partition, address tokenHolder, uint256 pageIndex, uint256 pageLength) view returns (uint256[] holdsId_)",
+  "function getHoldCountForByPartition(bytes32 partition, address tokenHolder) view returns (uint256)",
+  "function getHeldAmountForByPartition(bytes32 partition, address tokenHolder) view returns (uint256)",
+  // Clearing facet, contracts/facets/clearing/Clearing.sol:63. holds are only
+  // available while clearing is off: createHoldByPartition carries
+  // onlyClearingDisabled (HoldByPartition.sol:49)
+  "function isClearingActivated() view returns (bool)",
+  // ControlList facet. isAbleToAccess is (isWhiteList == inList), checked on the
+  // token holder at execute (HoldStorageWrapper.sol:1082-1084)
+  "function getControlListType() view returns (bool)",
+  "function isInControlList(address account) view returns (bool)",
+  // Kyc facet
+  "function getKycStatusFor(address account) view returns (uint8)",
+  // shared
+  "function decimals() view returns (uint8)",
+  "function totalSupply() view returns (uint256)",
+  "function balanceOf(address account) view returns (uint256)",
+  "function balanceOfByPartition(bytes32 partition, address account) view returns (uint256)",
+  "function paused() view returns (bool)",
+  "function isDeactivated() view returns (bool)",
+];
+
+/** `ThirdPartyType`, contracts/domain/asset/types/ThirdPartyType.sol:9-15. */
+export const THIRD_PARTY_TYPE_LABELS = [
+  "NULL",
+  "AUTHORIZED",
+  "OPERATOR",
+  "PROTECTED",
+  "CONTROLLER",
+] as const;
+
+export interface HoldReadBack {
+  holdId: number;
+  holderLabel: string;
+  holderEvm: string;
+  /** whole notes, scaled by the token's decimals */
+  amount: string;
+  amountRaw: string;
+  expirationTimestamp: number;
+  expirationIso: string;
+  secondsToExpiry: number;
+  /** past expiry: release and execute both revert HoldExpirationReached */
+  expired: boolean;
+  /** the only address that may release or execute this hold */
+  escrow: string;
+  escrowLabel: string;
+  /** the pinned recipient on execute. address(0) means any recipient is allowed */
+  destination: string;
+  destinationLabel: string;
+  /** the two checks the block E gate is */
+  escrowIsEngine: boolean;
+  destinationIsLender: boolean;
+  destinationPinned: boolean;
+  data: string;
+  operatorData: string;
+  thirdPartyType: number;
+  thirdPartyTypeLabel: string;
+}
+
+export interface HoldAccount {
+  label: string;
+  accountId: string;
+  evm: string;
+  /** balance NOT under hold. creating a hold moves notes out of this */
+  available: string;
+  /** total held across this holder's holds on partition 1 */
+  held: string;
+  holdCount: number;
+  holdIds: number[];
+  kycStatus: number;
+  kycStatusLabel: "NOT_GRANTED" | "GRANTED" | "unreadable";
+  /** false means the control list would block this account at execute */
+  ableToAccess: boolean;
+}
+
+export interface Prerequisite {
+  name: string;
+  ok: boolean;
+  /** what satisfies it when it is not met */
+  detail: string;
+}
+
+export interface HoldDiagnostics {
+  evmAddress: string;
+  decimals: number;
+  totalSupply: string;
+  clearingActivated: boolean;
+  paused: boolean;
+  deactivated: boolean;
+  /** true = whitelist, false = blacklist. ControlList.sol:55 */
+  controlListIsWhitelist: boolean;
+  nowSeconds: number;
+  accounts: HoldAccount[];
+  holds: HoldReadBack[];
+  prerequisites: Prerequisite[];
+  notes: string[];
+}
+
+function sameAddress(a: string, b: string): boolean {
+  return a.toLowerCase() === b.toLowerCase();
+}
+
+/**
+ * reads every hold on the watched accounts, plus everything block E needs to be
+ * true before a signature is worth spending.
+ *
+ * the prerequisite list exists because of the modifier order on
+ * `executeHoldByPartition` (`HoldByPartition.sol:110-120`): KYC and compliance
+ * are checked before the hold id, the escrow and the destination, so one missing
+ * grant masks every other problem and does it on the shot the video is built
+ * around. all of it is visible here before the recorder starts.
+ */
+export async function readHoldDiagnostics(
+  cfg: CovenantConfig,
+  idOrAddress: string,
+  accounts: { label: string; id: string; evm: string }[],
+  holdersToScan: { label: string; id: string; evm: string }[],
+): Promise<HoldDiagnostics> {
+  const evmAddress = toEvmAddress(idOrAddress);
+  const provider = rpc(cfg);
+  const token = new ethers.Contract(evmAddress, HOLD_ABI, provider);
+  const notes: string[] = [];
+  const nowSeconds = Math.floor(Date.now() / 1000);
+
+  const [
+    decimalsRaw,
+    totalSupplyRaw,
+    clearingActivated,
+    paused,
+    deactivated,
+    controlListIsWhitelist,
+  ] = await Promise.all([
+    attempt(notes, "decimals()", BigInt(0), async () => await token.decimals()),
+    attempt(notes, "totalSupply()", BigInt(0), async () => await token.totalSupply()),
+    attempt(notes, "isClearingActivated()", false, async () => await token.isClearingActivated()),
+    attempt(notes, "paused()", false, async () => await token.paused()),
+    attempt(notes, "isDeactivated()", false, async () => await token.isDeactivated()),
+    attempt(notes, "getControlListType()", false, async () => await token.getControlListType()),
+  ]);
+
+  const decimals = Number(decimalsRaw);
+
+  const label = (address: string): string => {
+    if (address === ethers.ZeroAddress) return "the zero address, unpinned";
+    const hit = accounts.find((a) => sameAddress(a.evm, address));
+    return hit ? `${hit.label} ${hit.id}` : "an account outside the four";
+  };
+
+  const watched: HoldAccount[] = await Promise.all(
+    accounts.map(async (a): Promise<HoldAccount> => {
+      const evm = toEvmAddress(a.evm);
+      const [available, held, holdCount, holdIds, kycStatusRaw, inControlList] =
+        await Promise.all([
+          attempt(notes, `balanceOfByPartition(${a.label})`, BigInt(0), async () =>
+            await token.balanceOfByPartition(PARTITION_1_ID, evm),
+          ),
+          attempt(notes, `getHeldAmountForByPartition(${a.label})`, BigInt(0), async () =>
+            await token.getHeldAmountForByPartition(PARTITION_1_ID, evm),
+          ),
+          attempt(notes, `getHoldCountForByPartition(${a.label})`, BigInt(0), async () =>
+            await token.getHoldCountForByPartition(PARTITION_1_ID, evm),
+          ),
+          attempt(notes, `getHoldsIdForByPartition(${a.label})`, [] as bigint[], async () =>
+            await token.getHoldsIdForByPartition(PARTITION_1_ID, evm, 0, 50),
+          ),
+          attempt(notes, `getKycStatusFor(${a.label})`, BigInt(-1), async () =>
+            await token.getKycStatusFor(evm),
+          ),
+          attempt(notes, `isInControlList(${a.label})`, false, async () =>
+            await token.isInControlList(evm),
+          ),
+        ]);
+
+      const kycStatus = Number(kycStatusRaw);
+      return {
+        label: a.label,
+        accountId: a.id,
+        evm,
+        available: units(available, decimals),
+        held: units(held, decimals),
+        holdCount: Number(holdCount),
+        holdIds: (holdIds as bigint[]).map((i) => Number(i)),
+        kycStatus,
+        kycStatusLabel:
+          kycStatus === 1 ? "GRANTED" : kycStatus === 0 ? "NOT_GRANTED" : "unreadable",
+        // ControlListStorageWrapper.isAbleToAccess:110-114, (isWhiteList == inList)
+        ableToAccess: Boolean(controlListIsWhitelist) === Boolean(inControlList),
+      };
+    }),
+  );
+
+  const holds: HoldReadBack[] = [];
+  for (const holder of holdersToScan) {
+    const evm = toEvmAddress(holder.evm);
+    const ids = await attempt(
+      notes,
+      `getHoldsIdForByPartition(${holder.label})`,
+      [] as bigint[],
+      async () => await token.getHoldsIdForByPartition(PARTITION_1_ID, evm, 0, 50),
+    );
+    for (const idRaw of ids as bigint[]) {
+      const holdId = Number(idRaw);
+      const raw = await attempt(notes, `getHoldForByPartition(${holder.label}, ${holdId})`, null, async () =>
+        await token.getHoldForByPartition({
+          partition: PARTITION_1_ID,
+          tokenHolder: evm,
+          holdId,
+        }),
+      );
+      if (!raw) continue;
+      const expiration = Number(raw[1]);
+      const escrow: string = raw[2];
+      const destination: string = raw[3];
+      holds.push({
+        holdId,
+        holderLabel: holder.label,
+        holderEvm: evm,
+        amount: units(raw[0], decimals),
+        amountRaw: raw[0].toString(),
+        expirationTimestamp: expiration,
+        expirationIso: expiration ? new Date(expiration * 1000).toISOString() : "",
+        secondsToExpiry: expiration - nowSeconds,
+        // HoldStorageWrapper.isHoldExpired:764-766 is `now >= expiration`, so the
+        // expiration second itself is already expired
+        expired: nowSeconds >= expiration,
+        escrow,
+        escrowLabel: label(escrow),
+        destination,
+        destinationLabel: label(destination),
+        escrowIsEngine: sameAddress(escrow, cfg.accounts.engine.evm),
+        destinationIsLender: sameAddress(destination, cfg.accounts.lender.evm),
+        destinationPinned: destination !== ethers.ZeroAddress,
+        data: raw[4],
+        operatorData: raw[5],
+        thirdPartyType: Number(raw[6]),
+        thirdPartyTypeLabel:
+          THIRD_PARTY_TYPE_LABELS[Number(raw[6])] ?? "unreadable",
+      });
+    }
+  }
+
+  const holderRow = watched.find((a) => sameAddress(a.evm, cfg.accounts.holder.evm));
+  const lenderRow = watched.find((a) => sameAddress(a.evm, cfg.accounts.lender.evm));
+
+  const prerequisites: Prerequisite[] = [
+    {
+      name: "clearing is off",
+      ok: !clearingActivated,
+      detail:
+        "createHoldByPartition carries onlyClearingDisabled (HoldByPartition.sol:49). " +
+        "the note was issued with clearingActive false.",
+    },
+    {
+      name: "the token is not paused or deactivated",
+      ok: !paused && !deactivated,
+      detail: "onlyUnpaused and onlyActivated on all four hold verbs.",
+    },
+    {
+      name: "the note holder has notes to pledge",
+      ok: Number(holderRow?.available ?? "0") > 0,
+      detail:
+        "block B mints to the issuer and transfers to the note holder. with a zero " +
+        "balance createHoldByPartition reverts InvalidPartition, because the holder " +
+        "has no entry on partition 1 at all (ERC1410StorageWrapper.sol:114-117).",
+    },
+    {
+      name: "the note holder holds KYC",
+      ok: holderRow?.kycStatus === 1,
+      detail:
+        "checked at execute, not at create: onlyIdentifiedAddresses(tokenHolder, _to), " +
+        "HoldByPartition.sol:118. block B step 7 grants it.",
+    },
+    {
+      name: "the lender holds KYC",
+      ok: lenderRow?.kycStatus === 1,
+      detail:
+        "the destination is checked at execute by both onlyIdentifiedAddresses and " +
+        "onlyCompliant (HoldByPartition.sol:118-119). block B step 8 grants it. " +
+        "without it the money shot reverts InvalidKycStatus and the escrow check is " +
+        "never even reached.",
+    },
+    {
+      name: "the note holder is not blocked by the control list",
+      ok: holderRow?.ableToAccess !== false,
+      detail:
+        "_validateExecuteHold reverts AccountIsBlocked before anything else " +
+        "(HoldStorageWrapper.sol:1082-1084).",
+    },
+    {
+      name: "the escrow account is not the issuer",
+      ok: !sameAddress(cfg.accounts.engine.evm, cfg.accounts.issuer.evm),
+      detail:
+        "if the agent is the escrow, the agent decides release versus execute. " +
+        "see DECISIONS.md D5.",
+    },
+  ];
+
+  return {
+    evmAddress,
+    decimals,
+    totalSupply: units(totalSupplyRaw, decimals),
+    clearingActivated: Boolean(clearingActivated),
+    paused: Boolean(paused),
+    deactivated: Boolean(deactivated),
+    controlListIsWhitelist: Boolean(controlListIsWhitelist),
+    nowSeconds,
+    accounts: watched,
+    holds,
+    prerequisites,
+    notes,
+  };
+}
