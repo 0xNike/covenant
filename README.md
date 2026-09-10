@@ -13,12 +13,16 @@ built on the Hedera Asset Tokenization Studio (ATS), for ETHGlobal ETHOnline 202
 a private credit fund lends to a mid-sized company and sells participation in that loan to
 holders in smaller slices. the note holder wants liquidity without waiting out the note's
 term. a cash lender will advance against the note as collateral, but has no right to see the
-borrower's books, so it cannot price the haircut itself. covenant puts the borrower's
-revenue, EBITDA and leverage into a hardware-isolated enclave. only two things leave it: a
-covenant pass or fail, and a haircut. the lender never sees the inputs and can still check
-that the computation ran the published code. the note itself, its compliance gate, its
-coupon and its collateral hold run on the ATS diamond on Hedera testnet, through the
-pre-deployed resolver and factory. we write no Solidity and deploy no contracts.
+borrower's books, so it cannot price the haircut itself. covenant answers that with a
+confidential compute engine: the borrower's revenue, EBITDA, total debt, cash and interest
+expense go in, and only a covenant verdict, a kpi value and a haircut come out. today the
+engine runs as a plain local service behind a clean interface; the target is the same
+computation behind a Chainlink CRE `handlerInTee`, inside a hardware-isolated enclave. the
+lender learns the verdict and the haircut, which is enough to recover the exact net
+leverage, but never the revenue, EBITDA, total debt, cash or interest expense behind it. the
+note itself, its compliance gate, its coupon and its collateral hold run on the ATS diamond
+on Hedera testnet, through the pre-deployed resolver and factory. we write no Solidity and
+deploy no contracts.
 
 what this replaces trust in, and what it does not, is the load-bearing paragraph of this
 project. read `PROJECT_BRIEF.md` §4 before assuming more than the paragraph above claims.
@@ -44,7 +48,7 @@ produced the token below. kyc, coupon, kpi and collateral hold screens do not ex
 | G1 | bond issued on Hedera testnet, visible on HashScan | **VERIFIED** |
 | G2 | transfer blocked by KYC, grant issued, same transfer succeeds | not started |
 | G3 | coupon distributed to holders of record. **first submittable entry** | not started |
-| G4 | `addKpiData` posted, coupon rate steps on a coupon's `fixingDate`, hold created and executed | not started |
+| G4 | `setCouponRateType(FIXED)` set, engine's rate posted by role-gated `setRate` and stamped into a coupon by the token, hold created and executed | not started |
 | G5 | confidential engine running behind a CRE `handlerInTee`, or an honestly-labelled CRE CLI simulation | not started |
 | G6 | video, README, three per-prize writeups, evidence, upstream PR prepared | not started |
 
@@ -112,7 +116,7 @@ bond config id, and four testnet accounts, one per party in the flow:
 
 | role | account | does |
 |---|---|---|
-| issuer / agent | `0.0.10424387` | issues the note, grants KYC, sets and distributes the coupon, posts `addKpiData` |
+| issuer / agent | `0.0.10424387` | issues the note, grants KYC, sets and distributes the coupon, posts the engine's rate via `setRate` |
 | note holder | `0.0.10444395` | receives the note, is the blocked-then-permitted transfer target, pledges the collateral hold |
 | lender | `0.0.10444404` | advances cash at the engine's haircut, receives collateral if the hold is executed |
 | engine, as `Hold.escrow` | `0.0.10445014` | the only account authorised to release or execute a hold. deliberately not the issuer's account, see `DECISIONS.md` D5 |
@@ -135,13 +139,15 @@ account, not by a script holding a key. no private key exists in this repository
   published computation is what ran, or that the value a human typed in matches its output.
   see `docs/architecture.md` for exactly where that boundary sits and what it deliberately
   does not draw.
-- **the confidential engine is not built yet.** it is being built now as a plain local
-  service, behind a clean interface, so it does not exist as a running thing you can point
-  at today. the target is to run the same computation behind a Chainlink CRE `handlerInTee`,
-  a hardware-isolated, TEE-based enclave. if that does not land in the build's timebox, the
-  fallback is a CRE CLI simulation of the same handler.
-  whichever ships, `EVIDENCE.md` and the Chainlink writeup say so plainly rather than
-  implying a live deployment that did not happen.
+- **the confidential engine runs today as a plain local service**, behind a clean interface.
+  the lender-view / agent-view split that makes confidentiality visible on screen is built
+  and working: the agent console shows the borrower's inputs, and `/lender` renders only the
+  verdict, the kpi value and the haircut, narrowed server-side before the page ever reaches
+  the client. the target is to run the same computation behind a Chainlink CRE
+  `handlerInTee`, a hardware-isolated, TEE-based enclave. if that does not land in the
+  build's timebox, the fallback is a CRE CLI simulation of the same handler. whichever ships,
+  `EVIDENCE.md` and the Chainlink writeup say so plainly rather than implying a live
+  deployment that did not happen.
 - **ATS is ERC-1400 compliant with partial ERC-3643 support.** it is not a full ERC-3643
   implementation. we do not claim otherwise anywhere in this project.
 - **the ATS `scheduledTask` facet is an internal EVM task queue**, drained lazily by the
@@ -151,9 +157,12 @@ account, not by a script holding a key. no private key exists in this repository
   console rather than moved by an ATS transaction. `setCoupon` records terms on-chain and
   the holder list is read from the chain; paying the holders is not itself a transaction.
   the collateral hold moves the note, not cash.
-- **the lender-view / agent-view split that makes confidentiality visible on screen is
-  planned, not built.** it is the intended demo of the boundary described above, and its
-  status belongs in the table above once it exists, not here.
+- **the lender only ever sees the verdict and the haircut**, and that is less private than
+  it first looks: the haircut is a linear function of the kpi value with an offset fixed by
+  the disclosed verdict, so it inverts back to the exact net leverage. what it does not
+  invert to is the leverage figure's own inputs, revenue, EBITDA, total debt, cash and
+  interest expense, one ratio being public does not make its numerator and denominator
+  public. see `docs/architecture.md` for the arithmetic.
 
 ---
 

@@ -23,7 +23,7 @@ flowchart TB
     subgraph S1["1. issuance"]
         direction LR
         AG1["issuer / agent<br/>0.0.10424387"]:::party
-        TX1["Bond.createKpiLinkedRate<br/>bond config 4, resolver 0.0.9212226,<br/>factory 0.0.9213391"]:::chain
+        TX1["Bond.create<br/>bond config 0x...02, resolver 0.0.9212226,<br/>factory 0.0.9213391"]:::chain
         AG1 -->|signs, MetaMask| TX1
     end
 
@@ -33,7 +33,7 @@ flowchart TB
         AG2["issuer / agent"]:::party
         NH2["note holder<br/>0.0.10444395"]:::party
         BLOCK2["transfer to note holder<br/>rejected, no kyc grant on record"]:::chain
-        GRANT2["grantKycMock"]:::chain
+        GRANT2["Kyc.grantKyc<br/>internal registry, direct facet call<br/>placeholder credential id, stored but never verified"]:::chain
         OK2["same transfer<br/>now succeeds"]:::chain
         AG2 --> BLOCK2
         AG2 -->|signs| GRANT2 --> OK2
@@ -46,10 +46,11 @@ flowchart TB
     subgraph S3["3. coupon"]
         direction LR
         AG3["issuer / agent"]:::party
+        TYPE3["setCouponRateType(FIXED)<br/>must run before the first setCoupon, D16"]:::chain
         TERMS3["setCoupon<br/>rate and dates, on-chain"]:::chain
         LIST3["getCouponHolders<br/>holder list, read from chain"]:::chain
         PAY3["payment to holders<br/>off-chain, not an ATS transaction"]:::hidden
-        AG3 -->|signs| TERMS3 --> LIST3 --> PAY3
+        AG3 -->|signs| TYPE3 --> TERMS3 --> LIST3 --> PAY3
     end
 
     S2 --> S3
@@ -69,13 +70,13 @@ flowchart TB
     %% ---- stage 5: reprice ----
     subgraph S5["5. reprice"]
         direction LR
-        AG5["issuer / agent<br/>reads the kpi value on screen"]:::party
-        KPI5["addKpiData"]:::chain
-        RATE5["KpiLinkedRateLib<br/>rate steps at the next coupon's fixingDate"]:::chain
-        AG5 -->|signs, MetaMask| KPI5 --> RATE5
+        AG5["issuer / agent<br/>reads the kpi value and rate on screen"]:::party
+        RATE5["FixedRate.setRate<br/>role-gated. RateType.FIXED rejects any other<br/>caller-supplied rate"]:::chain
+        STAMP5["token stamps the rate<br/>into every coupon from its own storage"]:::chain
+        AG5 -->|signs, MetaMask| RATE5 --> STAMP5
     end
 
-    OUT4 -.->|kpi value, human reads it and types it in, no on-chain link| AG5
+    OUT4 -.->|kpi value and rate, human reads it and types it into setRate, no on-chain link| AG5
     S4 --> S5
 
     %% ---- stage 6: collateralize ----
@@ -116,10 +117,26 @@ amber: a human operating a designated Hedera account, not the engine acting on i
 
 ## the confidential boundary, in plain terms
 
-the borrower's revenue, EBITDA and leverage go into the confidential compute engine and stop
-there. nothing crosses back out except three values: a covenant verdict, a kpi value, and a
-haircut. the lender only ever sees the haircut. the issuer/agent sees the kpi value, because
-it has to be typed into `addKpiData`, but not the financials behind it.
+the borrower's revenue, EBITDA, total debt, cash and interest expense go into the
+confidential compute engine and stop there. nothing crosses back out except three values: a
+covenant verdict, a kpi value (net leverage), and a haircut.
+
+the issuer/agent sees the kpi value and the derived rate, because both have to be typed into
+`FixedRate.setRate`, but not the financials behind them.
+
+the lender sees the verdict and the haircut only, and that is less private than it first
+looks. the haircut is `1500 + 7 * (kpi - 100) + addon` basis points, where the addon is fixed
+by the disclosed verdict (0 for a pass, 250 for a watch, 1000 for a breach) and the result is
+clamped to a published range. one equation, one unknown: the lender inverts the haircut and
+the verdict straight back to the exact net leverage, the same figure the issuer/agent sees.
+checked against the demo fixtures: a pass at 2200bps inverts to exactly 2.00x, a breach at
+4950bps to exactly 4.50x.
+
+what the lender does not recover is the leverage figure's own inputs. net leverage is
+`(total debt - cash) / EBITDA`, one equation in three unknowns, so revenue, EBITDA, total
+debt, cash and interest expense all stay unrecoverable even though their ratio does not. the
+disclosed verdict adds inequality bounds on the other two covenant tests, interest cover and
+EBITDA margin, crossed or not crossed, never a value.
 
 today the engine runs as a plain local service behind a clean interface. the target for the
 Chainlink confidential workflow leg is to run the same computation behind a CRE
@@ -131,9 +148,9 @@ human reads it, then signs.
 
 that last step is the honest part of this diagram. the dashed arrows out of stage 4 are not
 transactions. they are a person reading a number off a screen. nothing on Hedera checks that
-the number the issuer/agent typed into `addKpiData`, or the haircut the lender priced against,
-is the number the enclave actually produced. there is no attestation on chain, and no arrow in
-this diagram claims there is.
+the rate the issuer/agent typed into `FixedRate.setRate`, or the haircut the lender priced
+against, is the number the enclave actually produced. there is no attestation on chain, and no
+arrow in this diagram claims there is.
 
 the escrow separation in stage 7 is contract-enforced, which is different in kind from the
 relay above it. `HoldStorageWrapper.sol` checks the caller against `hold.escrow` and reverts
@@ -158,6 +175,9 @@ by a convention we could quietly break on stage.
   does not move cash.
 - **no push payment for the coupon.** `setCoupon` records terms on-chain and the holder list
   is read from the chain. paying holders is off-chain, not an ATS transaction.
+- **no verification behind the KYC grant.** `Kyc.grantKyc` stores a credential identifier the
+  contract never checks against anything. granting KYC exercises the token's compliance gate;
+  it does not verify anyone's identity.
 
 ## why this matters more than it looks
 
