@@ -130,7 +130,7 @@ fixed sequence, no exceptions, no shortcuts when we are behind:
 
 calendar is indicative. gates are not.
 
-### block A. environment and issuance. thu 10 sep, target G1 by 09:00 SGT
+### block A. environment and issuance. **DONE, G1 green 10 sep.**
 
 **nothing else happens until this works.** if it breaks, this is the whole block.
 
@@ -176,7 +176,7 @@ calendar is indicative. gates are not.
 - [ ] **3.6** iris: capture the issuance shot.
 - [ ] **G1** hermes signs off.
 
-### block B. compliance. thu 10 sep, target G2 by 14:00 SGT
+### block B. compliance. **DONE, G2 green 10 sep.**
 
 **the evidence model changed here. read this before planning the shot.**
 `TransferCommandHandler.ts:42` pre-checks with a `CanTransferByPartitionQuery` eth_call and
@@ -184,29 +184,34 @@ throws a client-side `InvalidKycStatus` **before submitting any transaction.** s
 transfer produces **no hashscan link** by default. the token would reject it, but the sdk
 never lets it get that far.
 
-- [ ] **3.7** gamma: attempt a transfer to an unverified party. capture the thrown sdk error
+- [x] **3.7** gamma: attempt a transfer to an unverified party. capture the thrown sdk error
       **and** the `CanTransferByPartition` eth_call returning false. that pair is the
       evidence, not a failed transaction.
-- [ ] **3.7b** gamma: **additionally force one raw on-chain attempt**, bypassing the sdk
+- [x] **3.7b** gamma: **additionally force one raw on-chain attempt**, bypassing the sdk
       pre-check, so we get a genuinely reverted transaction on hashscan. "the token rejected
       it" is the claim we are making, and a client-side exception does not prove it.
       timebox 45 minutes. if it fights back, ship 3.7 alone and say plainly in the writeup
       that the sdk blocks client-side.
-- [ ] **3.8** gamma: kyc grant. **use the mock external kyc list path**
+- [x] **3.8** gamma: kyc grant. **use the mock external kyc list path**
       (`ExternalKycListsManagement.createExternalKycMock()` then `grantKycMock()`), not
       internal `grantKyc`. `GrantKycCommandHandler.ts:38-41` calls `verifyVc()` from
       `@terminal3/verify_vc` and throws without a real verifiable credential. we do not have
       one and are not getting one this weekend.
-- [ ] **3.8b** gamma: **grant kyc to the lender too, not just the holder.**
+- [x] **3.8b** gamma: **grant kyc to the lender too, not just the holder.**
       `executeHoldByPartition` carries `onlyIdentifiedAddresses(tokenHolder, _to)` and
       `onlyCompliant` (`HoldByPartition.sol:118-119`), so an unverified lender means block E
       reverts at the money shot. cheap now, fatal on saturday.
-- [ ] **3.9** gamma: same transfer again. it succeeds. **this one does produce a hashscan
+- [x] **3.9** gamma: same transfer again. it succeeds. **this one does produce a hashscan
       link**, and the contrast with 3.7 is the demo.
-- [ ] **3.10** hercules: the console renders all three states legibly. a judge watching at
+- [x] **3.10** hercules: the console renders all three states legibly. a judge watching at
       1.5x has to see blocked, granted, permitted.
-- [ ] **3.11** argus records. iris captures immediately. two of the four shots that matter.
-- [ ] **G2** hermes signs off. **apollo not run at this gate**, see D15.
+- [x] **3.11** argus records. iris captures immediately. two of the four shots that matter.
+- [x] **G2 GREEN, 10 sep 2026.** signed on testnet, argus verifying independently.
+      mint `0x69bcc898…`, forced revert `0x904d61cc…` (`CONTRACT_REVERT_EXECUTED`,
+      selector `0xfc855b1b` = `InvalidKycStatus()`), holder grant `1789049932.186440373`,
+      lender grant `0x0bf73993…`, permitted transfer `0x582b822d…`.
+      final state: issuer 750.00, holder 250.00, all three accounts GRANTED.
+      **apollo not run at this gate**, see D15.
 
 ### block C. coupon. thu 10 sep, target G3 by 20:00 SGT
 
