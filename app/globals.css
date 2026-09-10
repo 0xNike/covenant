@@ -22,5 +22,30 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+ * tell the browser both schemes are supported, so form controls, scrollbars and
+ * the default caret follow the theme. without it a `bg-transparent` input in the
+ * dark scheme renders dark text on a dark field, and the borrower's figures on
+ * the agent screen are the one thing in this application that must never be
+ * hard to read.
+ */
+:root {
+  color-scheme: light dark;
+}
+
+/*
+ * the console embeds /lender in an iframe, and the site nav lives in the root
+ * layout, so it would otherwise render a second time inside that frame.
+ *
+ * suppressed here rather than by an iframe check in javascript because a
+ * javascript check cannot run before hydration: the bar would paint inside the
+ * panel and then disappear, and that flicker would be on the recording. the
+ * lender view sets `data-embedded` during server render, so this rule applies at
+ * first paint and there is nothing to see.
+ */
+body:has([data-embedded="true"]) [data-site-nav] {
+  display: none;
 }

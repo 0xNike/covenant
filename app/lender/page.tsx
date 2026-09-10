@@ -14,6 +14,10 @@ import { toLenderDisclosure } from "@/lib/engine/disclosure";
 import { readPublishedRun } from "@/lib/engine/store";
 import LenderView from "./lender-view";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "lender view" };
+
 // reads mutable server state, so it must render per request.
 export const dynamic = "force-dynamic";
 

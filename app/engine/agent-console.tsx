@@ -25,13 +25,14 @@ import type { EngineInputs, EngineResult } from "@/lib/engine/types";
 import { COVENANT_POLICY } from "@/lib/engine/policy";
 import {
   EngineStamp,
+  FINANCIALS_BLOCK_HEIGHT,
   Metric,
   Panel,
   Row,
   Rows,
   VerdictBadge,
   statusTextClasses,
-} from "./ui";
+} from "@/app/components/covenant-ui";
 
 type Mode = "both" | "agent" | "lender";
 
@@ -184,7 +185,13 @@ export default function AgentConsole() {
               subtitle="private. supplied by the borrower under the credit agreement."
               accent="agent"
             >
-              <div className="flex min-h-56 flex-col gap-3">
+              {/*
+                same height as the lender's empty panel of the same name, from
+                the same constant, so the pair reads as one comparison rather
+                than two boxes that happen to be adjacent. see
+                FINANCIALS_BLOCK_HEIGHT in @/app/components/covenant-ui.
+              */}
+              <div className={`flex ${FINANCIALS_BLOCK_HEIGHT} flex-col gap-3`}>
                 <div className="flex flex-wrap gap-2">
                   {FIXTURES.map((f) => (
                     <button
@@ -389,10 +396,21 @@ export default function AgentConsole() {
               open /lender in its own window
             </a>
           </div>
+          {/*
+            tall enough that the lender's whole document fits without the iframe
+            growing its own scrollbar.
+
+            at 44rem it did not: the lender view runs to roughly 63rem, so the
+            covenant report was clipped mid-panel and the frame scrolled
+            independently of the page. on camera that reads as a broken embed,
+            and it puts the haircut, which is the number the lender lends
+            against, below an inner fold that the viewer cannot see being
+            scrolled to. the page scrolls, the frame does not.
+          */}
           <iframe
             title="lender view"
             src="/lender?embedded=1"
-            className="min-h-[44rem] w-full border border-sky-700 dark:border-sky-500"
+            className="min-h-[64rem] w-full border border-sky-700 dark:border-sky-500"
           />
           <p className="text-zinc-500">
             a separate document, rendered by /lender. it is not this page with
@@ -425,12 +443,18 @@ function ValueField({
         {label}
       </label>
       <div className="flex items-center gap-2">
+        {/*
+          a size up from the surrounding text and tabular, on purpose. these five
+          numbers are what the reveal is about, so they have to register as a
+          block of figures at 1.5x, and the lender's empty panel only lands if
+          the thing it is empty of was conspicuous a moment earlier.
+        */}
         <input
           id={id}
           value={value}
           inputMode="numeric"
           onChange={(e) => onChange(e.target.value)}
-          className="w-48 border border-zinc-400 bg-transparent px-2 py-1 text-right tabular-nums dark:border-zinc-600"
+          className="w-52 border border-zinc-400 bg-transparent px-2 py-1 text-right text-base font-semibold tabular-nums dark:border-zinc-600"
         />
         <span className="text-zinc-500">{hint}</span>
       </div>
