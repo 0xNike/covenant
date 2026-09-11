@@ -9,11 +9,13 @@ this script assumes the flows it narrates have landed and have a HashScan link i
 section in ahead of its evidence. if a gate is still red when editing starts, use the
 fallback at the bottom of this document, not an improvised patch.
 
-**hard constraint: five minutes, no exceptions.** the core cut below totals **4:15**. that
-buys **45 seconds of margin** against the 5:00 cap, of which up to 35 seconds may be spent on
-the optional CRE insert (§5A) if the CRE timebox lands. if it does not land, §5A is simply
-not filmed and the 45 seconds stays as margin, or gets redistributed as extra hold-time on
-the shots below, at iris's discretion during the edit.
+**hard constraint: five minutes, no exceptions.** the core cut below totals **4:23** — up 8
+seconds from the version of this document written before block C was shot, entirely spent on
+step 4b in section 4 below; see the note there. that buys **37 seconds of margin** against
+the 5:00 cap, of which up to 30 seconds (down from 35, to hold the mandatory 5-second margin
+below) may be spent on the optional CRE insert (§5A) if the CRE timebox lands. if it does not
+land, §5A is simply not filmed and the 37 seconds stays as margin, or gets redistributed as
+extra hold-time on the shots below, at iris's discretion during the edit.
 
 **register for every spoken line below:** lowercase, terse, plain words, no em-dashes, no
 exclamation marks, no crypto slang. read the line as written or trim it, do not embellish it.
@@ -33,15 +35,15 @@ past what capture-protocol.md prescribes for that shot.
 | 1 | hashscan, the issuance transaction | 0:15 | 0:15 |
 | 2 | issuance recap, the note and its configuration | 0:20 | 0:35 |
 | 3 | block B, compliance: blocked, granted, permitted | 0:50 | 1:25 |
-| 4 | block C, coupon and rate: configuration | 0:40 | 2:05 |
-| 5 | the confidentiality reveal | 0:30 | 2:35 |
-| 5A | CRE insert, **conditional**, up to 0:35 | +0:00 to +0:35 | 2:35-3:10 |
-| 6 | block E, the collateral hold: release and execute | 1:20 | 3:55-4:30 |
-| 7 | closing card | 0:20 | 4:15-4:50 |
+| 4 | block C, coupon and rate: configuration, plus the refusal | 0:48 | 2:13 |
+| 5 | the confidentiality reveal | 0:30 | 2:43 |
+| 5A | CRE insert, **conditional**, up to 0:30 | +0:00 to +0:30 | 2:43-3:13 |
+| 6 | block E, the collateral hold: release and execute | 1:20 | 4:03-4:33 |
+| 7 | closing card | 0:20 | 4:23-4:53 |
 
-**core cut without §5A: 4:15. core cut with the full §5A: 4:50.** both are under the 5:00
-cap. if §5A runs, hold section 6 at exactly 1:20 and do not let the edit creep past 4:55 —
-leave five seconds of hard margin against the cap, always.
+**core cut without §5A: 4:23. core cut with the full, now-30-second §5A: 4:53.** both are
+under the 5:00 cap. if §5A runs, hold section 6 at exactly 1:20 and do not let the edit creep
+past 4:53 — leave at least five seconds of hard margin against the cap, always.
 
 ---
 
@@ -79,43 +81,83 @@ do not say "kpi-linked rate mechanism runs on chain." it does not. see `BUG.md` 
 `DECISIONS.md` D16. the sentence above is the honest version and it is still a strong claim:
 a real, reproducible defect in someone else's shipped software, found by building against it.
 
-## section 3. block B, compliance (0:35-1:25)
+**a decision, not an oversight: the token's own name.** after block C's maturity compression
+(`docs/shot-list-blocks-bce.md` §C step 8), the note's registered name still reads "Covenant
+KPI-Linked Private Credit Note 2029" while its maturity reads 2026-09-10 16:55 — permanently,
+publicly, on chain. **the core cut avoids the frame rather than narrating the mismatch.**
+nothing in this script opens a HashScan "token info" page, where a name field and other
+registered token properties sit together; every HashScan open in this script is scoped to one
+transaction. **do not add a token-overview cutaway during editing to fill time or to make a
+point look prettier** — that is the one frame this decision depends on staying out of the
+cut. if a future cut needs one anyway, the honest line is short and belongs here, in section
+2, not as an aside somewhere later: "the note's name still reads 2029. we compressed its
+maturity for this recording, and the name did not follow it." write it in only if the frame
+is unavoidable, not as a proactive flourish — an unprompted disclosure of a thing no viewer
+would otherwise see is its own kind of noise.
 
-see `docs/shot-list-blocks-bce.md` §B for the click-by-click. summary for pacing:
+## section 3. block B, compliance (0:35-1:25). **shot**, footage in hand.
+
+see `docs/shot-list-blocks-bce.md` §B for the click-by-click and the captured transaction
+hashes. summary for pacing:
 
 **screen:** `http://localhost:3007`, block B tab, MetaMask connected as the issuer
 `0.0.10424387` throughout.
 
-- **0:35-0:45 (10s).** step 5, "attempt the blocked transfer." no wallet popup. the console's
-  error state and the `canTransferByPartition` eth_call returning false, both on screen at
-  once. **this is the first of the four shots that matter.**
+**correction against the original plan below: the blocked transfer was captured in two
+forms, not one, and both are usable.** the SDK's client-side refusal (step 5, no transaction,
+console state only) and a forced raw attempt (step 6) that produced a genuinely **reverted**
+transaction on HashScan, `0x904d61ccdf76b03262f8cea279cffe16016e98856276b218ec6f61ab9849ade5`,
+revert selector `0xfc855b1b` = `InvalidKycStatus()`. the reverted transaction is the stronger
+frame for this open because a judge can verify it on HashScan without trusting anything the
+console says. lead with it; use the client-side refusal as the second beat, since it is the
+one thing in this section with no on-chain link at all and is worth naming as such.
+
+- **0:35-0:47 (12s).** step 6's reverted transaction. cold open on the HashScan page:
+  **status: reverted**, the selector, the `InvalidKycStatus()` decode. this replaces the
+  original plan of opening on the console error state alone.
   narration (≈25 words): *"a transfer to an unverified holder is refused by the token
-  itself, before any signature reaches the network. no transaction was submitted because none
-  was accepted."*
-- **0:45-1:00 (15s).** step 7, "grant kyc to the note holder." MetaMask confirm, then the
-  HashScan link for the grant transaction. **the second of the four shots that matter.**
+  itself. forced on chain anyway, it reverts, and that failure is a transaction anyone can
+  check on hashscan."*
+- **0:47-0:55 (8s).** cut to the console, step 5's result panel: the SDK's own client-side
+  refusal, `SDK refused before submitting: ...`, then the scripted scroll up (per the shot
+  list) to the "blocked" verdict card, held live and red. **this pair, steps 5 and 6 together,
+  is the first of the four shots that matter.**
+  narration (≈20 words): *"before it even reaches the network, the sdk asks the token the
+  same question and gets the same answer, with no transaction at all."*
+- **0:55-1:10 (15s).** step 7, "grant kyc to the note holder." MetaMask confirm, then the
+  HashScan link for the grant transaction, `1789049932.186440373`, then the scripted scroll to
+  the "granted" card. **the second of the four shots that matter.**
   narration (≈30 words): *"kyc is granted through the token's own internal compliance
   registry. the credential is a placeholder identifier. the contract stores it and never
   verifies it. we are exercising the gate, not verifying anyone's identity."*
-- **1:00-1:10 (10s).** quick cut, step 8, "grant kyc to the lender." no dedicated narration,
-  this one is needed for block E later, not for the story here. b-roll only, MetaMask confirm
-  visible, HashScan link opens and closes fast.
-- **1:10-1:25 (15s).** step 9, "transfer again." same accounts, same amount. success, and the
-  HashScan link. **the third of the four shots that matter.**
+- **1:10-1:16 (6s).** quick cut, step 8, "grant kyc to the lender,"
+  `0x0bf73993e41423a9f7e65794fc1c13510bd4f241e70a4848ea7729c62c43ba39`. no dedicated
+  narration, this one is needed for block E later, not for the story here. b-roll only,
+  MetaMask confirm visible, HashScan link opens and closes fast.
+- **1:16-1:25 (9s).** step 9, "transfer again." same accounts, same amount. success,
+  `0x582b822d7e8e99bd5c948211d55c464215e9a4265e38028265ce50a5b68ae6e5`, and the scripted
+  scroll to the "permitted" card, live and emerald. **the third of the four shots that
+  matter.**
   narration (≈20 words): *"the same transfer. same accounts, same amount. this time the
   token permits it, and it settles."*
 
-verdict cards (blocked / granted / permitted) should be visible in the same frame as each
-step where possible, since they turn from idle grey to their live colour the instant the
-step lands, and that colour change is itself evidence a viewer reads in under a second.
+verdict cards (blocked / granted / permitted) are reached by a scripted scroll after each
+landing step, not a cutaway — `app/block-b-panel.tsx` pins them at the top of the page, well
+above the step buttons, and the block B shoot confirmed that scroll has to be deliberate or
+the card ends up off screen. see `docs/shot-list-blocks-bce.md` §B for the exact choreography;
+the timings above assume it.
 
-## section 4. block C, coupon and rate (1:25-2:05)
+the section runs 50 seconds in the plan above against 3 shots plus one extra HashScan cold
+open; if the edit runs long, the b-roll cut (step 8) is the one to trim first, not the
+compliance pair or the scroll holds.
 
-see `docs/shot-list-blocks-bce.md` §C for the click-by-click.
+## section 4. block C, coupon and rate (1:25-2:13)
 
-**screen:** the block C console (or, if it is not yet a dedicated tab by shoot day, whatever
-control fires these exact calls; the operations and required on-screen values below do not
-change).
+see `docs/shot-list-blocks-bce.md` §C for the click-by-click and the captured hashes. block C
+is **shot**, footage in hand, same status as block B.
+
+**screen:** the block C console (`app/block-c-panel.tsx`), MetaMask connected as the issuer
+`0.0.10424387`, same account as block B.
 
 - `setCouponRateType(FIXED)` fires, then a read-back confirming `getCouponRateType() == 2`.
   hold 5 seconds on the confirmed value.
@@ -123,19 +165,41 @@ change).
   6.00 percent**, the rate the confidential engine computed for the "q2 filing, covenant
   headroom" fixture (`lib/engine/fixtures.ts`, net leverage 2.00x). the HashScan `RateUpdated`
   event must be visible. hold 6 seconds.
-- `setCoupon` fires with the pending triplet. hold 4 seconds on the HashScan link.
-- a read of `getCouponFor` for a holder, showing the entitlement is now readable. hold 5
+- **new: step 4b, the refusal.** added after this section was first drafted, against a
+  console that did not exist yet at the time — see `docs/shot-list-blocks-bce.md` §C for why
+  it landed and why it is worth the seconds. no wallet, no HashScan link, no scroll: the same
+  `setCoupon` call, once carrying a rate chosen for this call alone — 6 at 2 decimals,
+  deliberately not 600 at 4, so the refusal cannot read as an echo — and it is refused by
+  name, `InterestRateIsFixed()`. the identical call carrying nothing but the pending flag,
+  `rate 0, rateDecimals 0, rateStatus PENDING`, passes. hold 4 seconds on the refusal, 3 on
+  the pass. **this is the shot that turns the paragraph below from something the narration
+  claims into something the token does on camera**, in the same red visual language as block
+  B's blocked transfer.
+- `setCoupon` fires with the pending triplet. hold 4 seconds on the HashScan link, then cut to
+  the console's own "what we sent, and what the token stamped" table: engine output, what was
+  sent, what is in storage, what got stamped, four lines in one frame. hold 4 seconds. **this
+  is the proof that 600 was never named a second time** — the coupon asks the token for
+  nothing and the token stamps 600 onto it anyway, read from its own storage.
+- a read of `getCouponFor` for a holder, showing the entitlement is now readable. hold 3
   seconds. **do not show a payment.** there is none, on this facet.
 
-**narration (≈75 words, this is the densest section, trim aggressively if needed):**
+section 4's running order inside itself changed — 4b sits where it actually happens on chain,
+between posting the rate and declaring the coupon — but its position in the overall video (1
+through 7) did not move. compliance still opens the video's middle third: whether a note can
+move is still the more legible first question for a viewer meeting this instrument for the
+first time, and nothing about 4b's arrival argues for reordering that.
+
+**narration (≈95 words, this is the densest section, trim aggressively if needed):**
 > before the first coupon, the token is switched to a fixed rate type. from this point the
 > token refuses any rate a caller hands it and pays only from its own storage. the rate in
 > storage came from the confidential engine, six hundred at four decimals, six percent,
-> posted by a role-gated transaction. the coupon is then declared on chain. that is not the
-> same as paying it. the studio declares what a holder is owed. moving the money is a
+> posted by a role-gated transaction. we hand it a different rate to test that claim, and it
+> refuses, by name. the coupon we declare next asks the token for nothing — rate zero, status
+> pending. the token stamps six hundred onto it anyway, from storage, because that is the
+> only number it has. the studio declares what a holder is owed. moving the money is a
 > separate step, off chain.
 
-## section 5. the confidentiality reveal (2:05-2:35)
+## section 5. the confidentiality reveal (2:13-2:43)
 
 **this is iris's section and the most important thirty seconds after the hold execution.**
 `docs/shot-list-blocks-bce.md` does not cover this one; it is engine-console footage, not a
@@ -178,7 +242,7 @@ the ratio — both are false, both are checkable from `lib/engine/kernel.ts` and
 version above says the true thing instead: the ratio is recoverable and we say so, the
 statements behind it are not.
 
-## section 5A. CRE insert, conditional (up to 0:35)
+## section 5A. CRE insert, conditional (up to 0:30)
 
 **only film and cut this in if the CRE timebox (`CLAUDE.md` §5, hours 26-30) produces
 simulation or live evidence with a line in `EVIDENCE.md` G5.** if it does not land, skip this
@@ -198,7 +262,7 @@ than silence.
 pick exactly one of the two lines above based on what `EVIDENCE.md` G5 actually records. never
 say "enclave" without the word "simulation" attached if that is what ran.
 
-## section 6. block E, the collateral hold (2:35/3:10-3:55/4:30, 80 seconds)
+## section 6. block E, the collateral hold (2:43/3:13-4:03/4:33, 80 seconds)
 
 see `docs/shot-list-blocks-bce.md` §E for the click-by-click. **this is the strongest single
 shot in the video.** two holds: one released, one executed. use the "improved" fixture's
@@ -271,6 +335,10 @@ script is exactly where these slip in under time pressure:
   `EVIDENCE.md` genuinely records a live deployment
 - never claim we performed KYC on a real identity (we exercised the token's compliance gate
   with a placeholder credential, see `DECISIONS.md` D18)
+- never cut to the token's HashScan token-info page (name and registered properties together)
+  without the section 2 disclosure line in the same cut — the note's name reads 2029, its
+  compressed maturity reads 2026, and the default in this script is to avoid that frame
+  entirely rather than explain it; see the note after section 2
 
 ---
 
@@ -296,15 +364,15 @@ becomes the video's climax and gets the room that block E would have used.
 | 1 | hashscan, the issuance transaction | 0:15 | 0:15 |
 | 2 | issuance recap | 0:20 | 0:35 |
 | 3 | block B, compliance | 0:50 | 1:25 |
-| 4 | block C, coupon and rate | 0:40 | 2:05 |
-| 5 | confidentiality reveal, **extended** | 1:00 | 3:05 |
-| 5A | CRE insert, conditional | +0:35 max | 3:05-3:40 |
-| 7 | closing card, **extended** | 0:30 | 3:35-4:10 |
+| 4 | block C, coupon and rate, plus the refusal | 0:48 | 2:13 |
+| 5 | confidentiality reveal, **extended** | 1:00 | 3:13 |
+| 5A | CRE insert, conditional | +0:30 max | 3:13-3:43 |
+| 7 | closing card, **extended** | 0:30 | 3:43-4:13 |
 
-total **3:35 without §5A, 4:10 with it.** both leave close to a minute of slack against the
-5:00 cap. do not fill that slack with new content under time pressure. spend it on holding
-every remaining shot longer, at capture-protocol.md's pace, so nothing on screen needs a
-second look to read.
+total **3:43 without §5A, 4:13 with the (now 30-second) §5A.** both leave close to a minute of
+slack against the 5:00 cap. do not fill that slack with new content under time pressure.
+spend it on holding every remaining shot longer, at capture-protocol.md's pace, so nothing on
+screen needs a second look to read.
 
 **section 5, extended (60s instead of 30s).** run both fixtures, not one. agent view loads
 "q2 filing, covenant headroom" (pass, 6.00 percent, 22.00 percent haircut), cut to lender
