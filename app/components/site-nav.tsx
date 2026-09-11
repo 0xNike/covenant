@@ -37,8 +37,12 @@ import { usePathname } from "next/navigation";
 // build time, so this is the same variable, read without the blast radius.
 const NETWORK = process.env.NEXT_PUBLIC_NETWORK ?? "network not configured";
 
+// four destinations now. /holder is the one a visitor can use without a wallet,
+// so it sits next to the console rather than at the end, but the console stays
+// first because the video and the shot lists open there.
 const LINKS: { href: string; label: string }[] = [
   { href: "/", label: "console" },
+  { href: "/holder", label: "note holder" },
   { href: "/engine", label: "engine" },
   { href: "/lender", label: "lender view" },
 ];

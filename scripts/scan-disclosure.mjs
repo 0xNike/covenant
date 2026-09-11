@@ -7,9 +7,13 @@
 // ===========================================================================
 //
 // the whole project rests on one claim: the borrower's financials never reach
-// the lender's side. `lib/engine/disclosure.ts` narrows the engine result on the
-// server, `/lender` is a separate document with its own bundle, and the two
-// views share presentational code in `app/components/covenant-ui.tsx`.
+// any page outside the agent's own console. `lib/engine/disclosure.ts` narrows
+// the engine result on the server, every page that is shown a haircut is a
+// separate document with its own bundle, and they share presentational code in
+// `app/components/covenant-ui.tsx`.
+//
+// there are two such pages now, `/lender` and `/holder`, and the list is in
+// `PROTECTED` below.
 //
 // nothing in typescript enforces any of that. a single import added to a shared
 // module pulls the agent's code into the lender's bundle, every type still
@@ -62,8 +66,21 @@ const PORT = Number(process.env.SCAN_PORT ?? 3011);
 const DEV_PORT = Number(process.env.SCAN_DEV_PORT ?? 3007);
 const BASE = `http://127.0.0.1:${PORT}`;
 
-const LENDER = "/lender";
+/**
+ * every route that is shown a haircut and must never be shown the filing behind
+ * it.
+ *
+ * /holder joined this list when the note holder's view was built. the rule is
+ * not "scan the lender", it is "scan every surface outside the agent's own
+ * console", and a surface added without being added here would be covered by
+ * nothing. if a new route renders a covenant verdict, a haircut or an advance
+ * rate, it belongs in this array before it belongs on camera.
+ */
+const PROTECTED = ["/lender", "/holder"];
 const AGENT = "/engine";
+
+/** the route the server is polled on while waiting for it to come up. */
+const READY = PROTECTED[0];
 
 // ---------------------------------------------------------------------------
 // the needles, derived from the source rather than copied into this file
@@ -434,7 +451,7 @@ async function serve(dir) {
 
   for (let i = 0; i < 60; i++) {
     try {
-      const r = await fetch(`${BASE}${LENDER}`, { cache: "no-store" });
+      const r = await fetch(`${BASE}${READY}`, { cache: "no-store" });
       if (r.status === 200) return;
     } catch {
       // not up yet
@@ -508,10 +525,13 @@ async function main() {
   await serve(dir);
   await publishRun(facts);
 
-  const lender = await scanRoute(LENDER, needles);
+  const scanned = [];
+  for (const route of PROTECTED) {
+    scanned.push({ route, result: await scanRoute(route, needles) });
+  }
   const control = await scanRoute(AGENT, needles);
 
-  report(`LENDER  ${LENDER}`, lender);
+  for (const { route, result } of scanned) report(`PROTECTED ${route}`, result);
   report(`CONTROL ${AGENT}  (must return hits)`, control);
 
   // -- the control gate, first. a broken search must never read as a pass. -----
@@ -536,53 +556,62 @@ async function main() {
     fail(
       3,
       "THE CONTROL FAILED. the search is not working, so the clean result against " +
-        "/lender proves nothing. fix the scan before trusting any result from it.",
+        `${PROTECTED.join(" and ")} proves nothing. fix the scan before trusting ` +
+        "any result from it.",
     );
   }
-  console.log("control fired. the search works, so a clean lender result means something.");
+  console.log("control fired. the search works, so a clean result below means something.");
 
-  // -- now the lender ---------------------------------------------------------
-  const real = [];
-  const benign = [];
-  for (const hit of lender.hits) {
-    const rule = classify(hit, facts);
-    if (rule) benign.push({ hit, rule });
-    else real.push(hit);
-  }
+  // -- now every protected route ----------------------------------------------
+  let failed = false;
+  for (const { route, result } of scanned) {
+    const real = [];
+    const benign = [];
+    for (const hit of result.hits) {
+      const rule = classify(hit, facts);
+      if (rule) benign.push({ hit, rule });
+      else real.push(hit);
+    }
 
-  console.log(`\nlender hits: ${lender.hits.length} total, ${benign.length} known benign, ${real.length} unexplained`);
-  const seen = new Set();
-  for (const { hit, rule } of benign) {
-    const key = hit.id + hit.source;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    console.log(`  benign  ${hit.id}  in ${hit.source}`);
-    console.log(`          ${rule.why}`);
-  }
+    console.log(
+      `\n${route} hits: ${result.hits.length} total, ${benign.length} known benign, ${real.length} unexplained`,
+    );
+    const seen = new Set();
+    for (const { hit, rule } of benign) {
+      const key = hit.id + hit.source;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      console.log(`  benign  ${hit.id}  in ${hit.source}`);
+      console.log(`          ${rule.why}`);
+    }
 
-  if (real.length > 0) {
+    if (real.length === 0) continue;
+    failed = true;
     console.error("\n--------------------------------------------------------------");
-    console.error("DISCLOSURE FOUND IN THE LENDER PAYLOAD");
+    console.error(`DISCLOSURE FOUND IN THE PAYLOAD OF ${route}`);
     console.error("--------------------------------------------------------------");
     for (const h of real) {
       console.error(`  [${h.kind}] ${h.id}`);
       console.error(`     in ${h.source}`);
       console.error(`     ...${h.context}...`);
     }
+  }
+
+  if (failed) {
     console.error(
-      "\nthe borrower's financials, or the shape of them, are being served to the\n" +
-        "lender's side. the claim this project rests on is currently false.\n" +
-        "usual cause: a module imported by app/lender reached something that\n" +
-        "imports lib/engine/fixtures.ts or names EngineInputs.",
+      "\nthe borrower's financials, or the shape of them, are being served to a\n" +
+        "page that must not carry them. the claim this project rests on is\n" +
+        "currently false. usual cause: a module imported by that route reached\n" +
+        "something that imports lib/engine/fixtures.ts or names EngineInputs.",
     );
     cleanup();
     process.exit(1);
   }
 
   console.log(
-    "\nCLEAN. no borrower figure and no input field name reaches the lender's\n" +
-      "document, its inlined RSC payload, or any chunk it loads, in a production\n" +
-      "build, with the control confirming the search fires.",
+    `\nCLEAN. no borrower figure and no input field name reaches ${PROTECTED.join(" or ")},\n` +
+      "their inlined RSC payloads, or any chunk they load, in a production build,\n" +
+      "with the control confirming the search fires.",
   );
   cleanup();
   process.exit(0);
