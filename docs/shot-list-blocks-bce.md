@@ -7,12 +7,12 @@ to all three blocks below without restatement: recorder starts before the block'
 and stays on until the gate closes, say the account out loud before every confirm, HashScan
 opens while the recorder is still running.
 
-block B's UI exists today (`app/block-b-panel.tsx`) and every step below is copied from its
-actual button labels and step numbers, not guessed. block C and block E do not have a console
-built yet at the time this is written. their shot lists describe the exact on-chain call, the
-signer, and what must be legible on screen; if the eventual UI is not a numbered-step panel
-like block B's, adapt only the click target, never the sequence, the account, or the required
-on-screen values.
+block B's UI exists today (`app/console/block-b-panel.tsx`) and every step below is copied
+from its actual button labels and step numbers, not guessed. block C and block E do not have a
+console built yet at the time this is written. their shot lists describe the exact on-chain
+call, the signer, and what must be legible on screen; if the eventual UI is not a numbered-step
+panel like block B's, adapt only the click target, never the sequence, the account, or the
+required on-screen values.
 
 **status.** block B: **shot**, see the panel below its heading. block C: **shot**, see the
 panel below its heading — landed with an extra step, 4b, that did not exist when this
@@ -23,6 +23,20 @@ this document describes has landed exactly as scripted, including the two mid-re
 account switches block E required. all three share block B's layout — verdict cards at the
 top of the page, step buttons well below the fold — so the scroll choreography below applies
 throughout; see the notes inside each block's section.
+
+**route note, added after the operator panels moved.** all three blocks now live at
+`http://localhost:3007/console`, not at the site root — `/` is the institutional landing page
+and carries none of these panels. the console page also changed its default tab: **block E is
+now the default tab, not block B.** block B and block C both require an explicit tab click
+("block B, compliance" / "block C, rate and coupon") before their first scripted click; block
+E needs no tab click. every "screen:" line below is corrected to say so.
+
+**before cutting block B or block C footage into the final edit, read `docs/video-script.md`'s
+"a filming risk" section.** `attempt()` in `lib/ats/diagnostics.ts` swallows a failed contract
+read into a zero, and every "read state off chain" panel in these two blocks' already-shot
+footage goes through it. that footage cannot be re-taken — check it frame by frame against
+`EVIDENCE.md` before trusting a diagnostics-backed figure on screen, per the rule now in
+`docs/capture-protocol.md`.
 
 ---
 
@@ -53,7 +67,8 @@ that lights a card now scripts the scroll explicitly. this is not a layout fix �
 (click, then scroll up to a large card lighting) reads well on camera. it just cannot be left
 to whoever is holding the mouse.
 
-**screen:** `http://localhost:3007`, "block B, compliance" tab (the default tab).
+**screen:** `http://localhost:3007/console`, "block B, compliance" tab — click it, it is no
+longer the default tab on this page.
 **account for every step in this block:** issuer `0.0.10424387`. connect before step 1 and do
 not switch for the rest of the block — the panel refuses to build a transaction from any
 other connected account and shows an amber warning if you do.
@@ -150,8 +165,13 @@ and the HashScan link inside it.
 
 click **"grant kyc to the lender"**. confirm. hold 4 seconds. this grant is needed for block
 E later (`executeHoldByPartition` requires the lender to be identified), not for the transfer
-story in this block. quick cut, no dedicated narration line in the script. no scroll needed —
-this one lights no card of its own; "granted" already went live at step 7.
+story in this block. no scroll needed — this one lights no card of its own; "granted" already
+went live at step 7.
+
+**cut from the video in the current recut** (`docs/video-script.md` §3, "what was cut and what
+it costs"). still shoot it — the transaction still has to land on chain before block E — but
+the editor drops this clip from the final cut; it is not narrated and carried the lowest
+evidentiary weight per second of anything in block B.
 
 **actual capture:** `0x0bf73993e41423a9f7e65794fc1c13510bd4f241e70a4848ea7729c62c43ba39`.
 
@@ -210,7 +230,8 @@ had not been built yet. the console that shipped built it as its own numbered st
 blocked-transfer card. it is a stronger shot than anything else in this block — see the
 dedicated note under step 4b.
 
-**screen:** `http://localhost:3007`, block C tab. the panel's own step numbering — 1, 2, 3, 4,
+**screen:** `http://localhost:3007/console`, "block C, rate and coupon" tab — click it, it is
+not the default tab on this page. the panel's own step numbering — 1, 2, 3, 4,
 4b, 5, 6, 7, 8, 9 — is what is used below. an earlier draft of this section numbered a
 "prerequisite" and two separate role grants; that numbering did not survive contact with the
 shipped panel, which grants both roles in a single transaction at step 1. the draft is
@@ -372,6 +393,11 @@ hold **6 seconds minimum, static**, on this table. this is the on-screen version
 that `600` was never named twice — it does not need narration to carry the point alone once
 this panel is in frame; it just needs the camera to hold on it.
 
+**the `getCouponFor` read-back that follows this table in an earlier draft is cut from the
+video in the current recut** (`docs/video-script.md` §4, "what was cut and what it costs") —
+still worth capturing for completeness, but the stamped table above already carries the
+stronger version of the same claim, so the editor does not need this clip to land the point.
+
 ### what must be visible somewhere in this block's footage, not necessarily all at once
 
 - the three verdict cards ("protocol owned" / "engine priced" / "stamped") each reached by
@@ -408,11 +434,14 @@ of those. that revert-shaped negative space is not on tape, but the escrow field
 the signer of step B2 being the same, uninvolved third account is, and that is the claim this
 block exists to prove.
 
-**screen:** `app/block-e-panel.tsx` shares the same layout as block B and
-block C — two outcome cards ("released" / "executed") pinned at the top of the page, the step
-sections well below them, plus a "prerequisites" panel and a "state read back" panel further
-down still. **the same above-the-fold problem applies here too, scripted below rather than
-left for the day.** if it is not this exact panel by shoot day, adapt only the click target.
+**screen:** `http://localhost:3007/console`, "block E, collateral hold" tab — this is now the
+**default tab** on the console page, so no tab click is needed to reach it, unlike block B and
+block C above. the panel (`app/console/block-e-panel.tsx`) shares the same layout as block B
+and block C — two outcome cards ("released" / "executed") pinned at the top of the page, the
+step sections well below them, plus a "prerequisites" panel and a "state read back" panel
+further down still. **the same above-the-fold problem applies here too, scripted below rather
+than left for the day.** if it is not this exact panel by shoot day, adapt only the click
+target.
 
 **this block needs two account switches mid-recording**, which block B and block C do not.
 say the account out loud before every single confirm in this block without exception — this
@@ -459,13 +488,14 @@ static** on the card and its detail line naming the escrow account, not the issu
 
 hold 6 seconds on the transaction result and the HashScan link.
 
-**bridge, no signature, this is a narration beat not a click:** if the confidentiality
-reveal footage exists (block D / the `/engine` console), a quick cutaway to the "q3 filing,
-covenant breached" fixture's engine output — net leverage 4.50x, coupon rate 12.00 percent,
-verdict **breach** — sets up why this hold resolves differently from hold A's. hold 4-5
-seconds. if that footage does not exist yet or does not fit the edit, skip the cutaway and
-let the narration alone carry the "this one defaults" framing; do not fabricate a screen that
-was not filmed.
+**bridge — cut from the video in the current recut** (`docs/video-script.md` §6, "what was cut
+and what it costs"). the earlier plan was a no-signature cutaway to the "q3 filing, covenant
+breached" fixture's engine output — net leverage 4.50x, coupon rate 12.00 percent, verdict
+**breach** — before the escrow account switch. section 5 already shows the engine computing a
+verdict once; the current cut judges a second showing of a fixture affordable to lose ahead of
+the length limit, and carries the breach in one line of narration instead ("this quarter's
+filing shows a covenant breach"). if a future cut has room again, the cutaway is still the
+right shot to reach for first — it is not wrong, only cut for time.
 
 **switch MetaMask to the engine/escrow account `0.0.10445014`.** this is the single
 highest-stakes click in the entire shoot — see the risk note below. say "signing as engine

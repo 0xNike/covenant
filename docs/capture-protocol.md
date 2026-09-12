@@ -49,6 +49,36 @@ argus's verification step, do not let hao move to the next line in the todo list
 sequence is landed → hashscan link opens in a new tab while the recorder is still running →
 only then does the recorder stop.
 
+## before every take, read the figures the shot depends on
+
+`attempt()` in `lib/ats/diagnostics.ts` swallows a failed contract read into a zero rather than
+an error. every "read state off chain" / "state read back" panel in the block A, B, C and E
+consoles goes through it. a slow relay can make one of those reads time out and render a
+plausible-looking zero next to a figure that is genuinely non-zero — this already happened
+once: the landing page showed `in issue 0.00 notes` next to a non-zero holding, traced to one
+read that came back after 22 request timeouts. the front page and `/holder` were rewritten
+afterward to read chain state directly instead of through the diagnostics module, specifically
+to remove this failure mode from those two routes. the console panels at `/console` were not
+rewritten and still carry the risk.
+
+the chain truth is independently verified in `EVIDENCE.md`, so nothing recorded is ever wrong
+in fact — but a wrong figure can still appear on screen during a take, and a viewer watching
+the video has no way to know it is wrong from the frame alone. so:
+
+**before each take, read the figures the shot depends on and confirm them against
+`EVIDENCE.md` or a direct chain read, before the recorder rolls.** if a panel shows a zero
+where a number is expected, stop and re-read rather than filming it — a second `attempt()` call
+a few seconds later, once the relay has caught up, is the fix, not filming around the bad
+number and hoping the edit does not land on that frame.
+
+**this applies to footage already shot, not just new takes.** blocks B and C are recorded and
+their signing moments cannot be re-taken. before cutting that footage into the final edit,
+check every diagnostics-backed figure that appears on screen — `totalSupply`, the facet
+readiness grid, any KYC-status or balance read inside a "read state" panel — frame by frame
+against `EVIDENCE.md`'s numbers for the same moment. see `docs/video-script.md`'s "a filming
+risk" section and `docs/shot-list-blocks-bce.md`'s route note for where this applies inside
+each block's footage.
+
 ## the two things that cannot be recovered if this is skipped
 
 - **an on-chain transaction.** re-doing it costs a new signature and, for issuance or a hold

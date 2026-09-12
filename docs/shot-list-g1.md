@@ -10,8 +10,13 @@ transaction   0xb13a78518922d1ba1c40966db9cc5e34174db85946f030e84eff03737e7fa078
 hashscan tx   https://hashscan.io/testnet/transaction/0xb13a78518922d1ba1c40966db9cc5e34174db85946f030e84eff03737e7fa078
 security id   0.0.10450229
 hashscan ctr  https://hashscan.io/testnet/contract/0.0.10450229
-console       http://localhost:3007
+console       http://localhost:3007/console, "block A, issuance" tab
 ```
+
+**route note, added after the operator panels moved off the site root.** `/` is now the
+institutional landing page and carries none of these panels. the panel shot 3 describes below
+lives at `/console`, under the "block A, issuance" tab — it is not the default tab on that
+page (block E is), so click it before shot 3 begins.
 
 start the recorder before shot 0. do not skip shot 0.
 
@@ -66,7 +71,8 @@ the shot.
 ## shot 3. console, read the configuration back off chain
 
 new tab (or the same one, does not matter — this view does not need the signing tab or a
-connected wallet at all). go to `http://localhost:3007`.
+connected wallet at all). go to `http://localhost:3007/console`, then click the "block A,
+issuance" tab — it is not the default tab on this page.
 
 no metamask connection needed for this step. do not click "connect wallet" — it adds a wallet
 popup to the frame for no reason, since this read is a view call, not a signature.
