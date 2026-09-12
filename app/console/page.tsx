@@ -2,9 +2,8 @@
 //
 // this is the transaction-level surface. every gate in this project was executed
 // through these panels, and they are kept so the calls and their results can be
-// read directly rather than taken on our word. the blocks are in ship order:
-// A issued the note, B is the compliance leg, C is the rate and coupon leg,
-// E is the collateral hold.
+// read directly rather than taken on our word. the panels are in ship order:
+// issuance, compliance, rate and coupon, collateral hold.
 //
 // the role-shaped views live at /holder, /lender and /engine. this page is the
 // evidence surface, not the product.
@@ -39,10 +38,10 @@ export default function Console() {
   return (
     <div className="font-mono text-sm">
       <nav className="mx-auto flex max-w-4xl gap-2 px-6 pt-6">
-        {button("e", "block E, collateral hold")}
-        {button("c", "block C, rate and coupon")}
-        {button("b", "block B, compliance")}
-        {button("a", "block A, issuance")}
+        {button("e", "collateral hold")}
+        {button("c", "rate and coupon")}
+        {button("b", "compliance")}
+        {button("a", "issuance")}
       </nav>
       {tab === "e" ? (
         <BlockEPanel />

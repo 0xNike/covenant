@@ -1,6 +1,6 @@
 "use client";
 
-// covenant block C. the rate and coupon console.
+// covenant, the rate and coupon console.
 //
 // what this screen has to make legible, in order:
 //
@@ -187,7 +187,8 @@ export default function BlockCPanel() {
     return () => clearInterval(t);
   }, []);
 
-  // the wallet as it is now, not as it was at connect time. see block B.
+  // the wallet as it is now, not as it was at connect time. as in the
+  // compliance panel.
   useEffect(() => {
     const eth = (
       globalThis as {
@@ -682,7 +683,7 @@ export default function BlockCPanel() {
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10 font-mono text-sm">
       <header className="flex flex-col gap-1">
-        <h1 className="text-base font-semibold">covenant, block C</h1>
+        <h1 className="text-base font-semibold">covenant, rate and coupon</h1>
         <p className="text-zinc-500">
           the token stops accepting a rate from its caller, the confidential
           engine&apos;s output becomes the token&apos;s own rate, and the token
@@ -799,7 +800,7 @@ export default function BlockCPanel() {
           the note existed. the record date {recordInSeconds}s out and the
           payment date {executionInSeconds}s out are compressed for the same
           reason: the register is fixed and the entitlement becomes readable
-          inside the demo.
+          inside a single session.
         </p>
         <p className="text-zinc-500">
           this window is not the reporting period of the filing the engine read.

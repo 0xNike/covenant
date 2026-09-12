@@ -1,6 +1,6 @@
 "use client";
 
-// covenant block B. the compliance console.
+// covenant, the compliance console.
 //
 // the whole point of this screen is that a viewer can tell blocked from granted
 // from permitted at a glance, so the three verdict cards at the top are large,
@@ -494,7 +494,7 @@ export default function BlockBPanel() {
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10 font-mono text-sm">
       <header className="flex flex-col gap-1">
-        <h1 className="text-base font-semibold">covenant, block B</h1>
+        <h1 className="text-base font-semibold">covenant, compliance</h1>
         <p className="text-zinc-500">
           the token refuses a transfer to an unverified party, kyc is granted,
           the same transfer settles. hedera {cfg.network}.
@@ -716,8 +716,9 @@ export default function BlockBPanel() {
         <>
           not optional and not cosmetic. HoldByPartition.sol:118-119 puts
           onlyIdentifiedAddresses and onlyCompliant on
-          executeHoldByPartition, so an unverified lender means block E reverts
-          at the moment everything else is already green.
+          executeHoldByPartition, so an unverified lender means the collateral
+          hold reverts on execution, at the moment everything else is already
+          green.
         </>,
         () => stepKyc("kycLender", { label: "lender", ...cfg.accounts.lender }),
         "grant kyc to the lender",
@@ -883,8 +884,8 @@ export default function BlockBPanel() {
         </p>
         {lenderRow && (
           <p className="text-zinc-500">
-            lender kyc is {lenderRow.kycStatusLabel}. block E&apos;s
-            executeHoldByPartition needs it GRANTED.
+            lender kyc is {lenderRow.kycStatusLabel}. executeHoldByPartition
+            requires GRANTED kyc on the lender.
           </p>
         )}
       </section>

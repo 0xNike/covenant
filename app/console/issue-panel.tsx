@@ -1,9 +1,9 @@
 "use client";
 
-// covenant block A. connect a wallet, issue the note, show what happened.
+// covenant, the issuance console. connect a wallet, issue the note, show what
+// happened.
 //
-// deliberately minimal. this proves the chain path, it is not the console.
-// hercules builds the console later.
+// deliberately minimal. this proves the chain path.
 
 import { Fragment, useCallback, useMemo, useState } from "react";
 import { hashscanContract, hashscanTx, readConfig } from "@/lib/config";
@@ -129,7 +129,7 @@ export default function IssuePanel() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10 font-mono text-sm">
       <header className="flex flex-col gap-1">
-        <h1 className="text-base font-semibold">covenant, block A</h1>
+        <h1 className="text-base font-semibold">covenant, issuance</h1>
         <p className="text-zinc-500">
           issue the kpi-linked private credit note on hedera {cfg.network}
         </p>
@@ -237,8 +237,8 @@ export default function IssuePanel() {
           <h3 className="mt-2 font-semibold">read back off chain</h3>
           <p className="text-zinc-500">
             what the token reports, not what we sent. clearingActive must be
-            false or block E is dead. internalKycActivated must be true or block
-            B does not block.
+            false or the hold verbs are unreachable. internalKycActivated must be
+            true or the token will not refuse a transfer to an unverified party.
           </p>
           <dl className="grid grid-cols-[14rem_1fr] gap-x-3 gap-y-1">
             <dt className="text-zinc-500">name / symbol / isin</dt>
@@ -412,12 +412,18 @@ export default function IssuePanel() {
           <dt className="text-zinc-500">clearingActive</dt>
           <dd>
             {String(sentTerms.clearingActive)}
-            <span className="text-zinc-500"> (must be false, block E)</span>
+            <span className="text-zinc-500">
+              {" "}
+              (must be false, or createHoldByPartition is unreachable)
+            </span>
           </dd>
           <dt className="text-zinc-500">internalKycActivated</dt>
           <dd>
             {String(sentTerms.internalKycActivated)}
-            <span className="text-zinc-500"> (must be true, block B)</span>
+            <span className="text-zinc-500">
+              {" "}
+              (must be true, or kyc does not gate transfers)
+            </span>
           </dd>
           <dt className="text-zinc-500">isControllable</dt>
           <dd>{String(sentTerms.isControllable)}</dd>

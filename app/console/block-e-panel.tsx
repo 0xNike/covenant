@@ -1,6 +1,6 @@
 "use client";
 
-// covenant block E. the collateral hold console.
+// covenant, the collateral hold console.
 //
 // two holds over the same instrument. hold A is released, hold B is executed.
 // the escrow is the engine account on both, and the destination is pinned to the
@@ -8,7 +8,7 @@
 // decision. that is the whole claim, and the read-back panel at the bottom is
 // where a viewer can check it against the token rather than against our copy.
 //
-// this block needs two account switches mid-recording, which no other block
+// this panel needs two account switches partway through, which no other panel
 // does. every step below names the account that must sign it, refuses to build a
 // transaction from any other, and asks the token itself, by eth_call from the
 // live account, what would happen before anything is signed.
@@ -112,7 +112,7 @@ function OutcomeCard({
 /**
  * the escrow and destination of one hold, read off the token.
  *
- * this is the block E gate, so it is a card and not a table row. `escrow_` is
+ * this is the collateral hold gate, so it is a card and not a table row. `escrow_` is
  * the engine and `destination_` is the lender, both returned by
  * `getHoldForByPartition`, neither taken from our own state.
  */
@@ -249,7 +249,7 @@ export default function BlockEPanel() {
    * long the console has been open, and this is the one field where staleness is
    * fatal in both directions: an expiry already passed is refused at creation,
    * and an expiry that looks fine on screen but was computed an hour ago leaves
-   * less filming time than the number says. `plan` below is the preview, kept in
+   * less working time than the number says. `plan` below is the preview, kept in
    * state so the screen shows what the last build produced; every dry run and
    * every create rebuilds it first.
    */
@@ -352,7 +352,8 @@ export default function BlockEPanel() {
   }, [cfg, tokenEvm, watched, liveAccount, buildPlan, holdA, holdB, append]);
 
   // the read-back is NOT inside the same try as the transaction. same reasoning
-  // as block B: a rejected read is a warning about the screen, never a verdict
+  // as in the compliance panel: a rejected read is a warning about the screen,
+  // never a verdict
   // about the chain, and it must not overwrite a landed transaction's hash.
   const run = useCallback(
     async (id: StepId, fn: () => Promise<StepResult>) => {
@@ -601,7 +602,7 @@ export default function BlockEPanel() {
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10 font-mono text-sm">
       <header className="flex flex-col gap-1">
-        <h1 className="text-base font-semibold">covenant, block E</h1>
+        <h1 className="text-base font-semibold">covenant, collateral hold</h1>
         <p className="text-zinc-500">
           the note holder pledges the note twice, naming the confidential engine
           as escrow and the lender as the only permitted destination. the engine
@@ -666,8 +667,9 @@ export default function BlockEPanel() {
         </div>
         <p className="text-zinc-500">
           expiry ends both outcomes, not one: past it, release and execute both
-          revert HoldExpirationReached and only reclaim works. 10 to 180 minutes,
-          long enough to film and short enough that a mistake heals itself.
+          revert HoldExpirationReached and only reclaim works. 10 to 180
+          minutes, long enough to complete both holds and short enough that a
+          mistake heals itself.
         </p>
         {plan ? (
           <p>
@@ -715,11 +717,11 @@ export default function BlockEPanel() {
       </section>
 
       <section className="flex flex-col gap-2 border border-zinc-300 p-4 dark:border-zinc-700">
-        <h2 className="font-semibold">prerequisites, before the recorder starts</h2>
+        <h2 className="font-semibold">prerequisites</h2>
         <p className="text-zinc-500">
-          the on-chain checks run in a fixed order and KYC is checked before the
-          escrow, so one missing grant hides every other problem and hides it on
-          the shot this block is built around.
+          the on-chain checks run in a fixed order and KYC is checked before
+          the escrow, so one missing grant hides every other problem until it is
+          fixed. check all of them before signing anything.
         </p>
         {!diag && <p className="text-zinc-500">read state off chain to populate this.</p>}
         {diag && (
@@ -747,8 +749,8 @@ export default function BlockEPanel() {
             {unmet.length > 0 && (
               <p className="border-2 border-red-600 px-2 py-1 font-semibold text-red-600 dark:text-red-400">
                 {unmet.length} prerequisite{unmet.length === 1 ? "" : "s"} unmet.
-                block B supplies all of them. do not film this block until they
-                are green.
+                createHoldByPartition and executeHoldByPartition revert until
+                every one is green. KYC is granted on the compliance panel.
               </p>
             )}
             <table className="w-full text-left">
@@ -821,9 +823,7 @@ export default function BlockEPanel() {
         holdA === null,
       )}
 
-      <h2 className="font-semibold">
-        hold B. the covenant breaches. this is the shot.
-      </h2>
+      <h2 className="font-semibold">hold B. the covenant breaches.</h2>
 
       {step(
         "createB",
@@ -875,7 +875,7 @@ export default function BlockEPanel() {
 
       <section className="flex flex-col gap-2 border border-amber-600 p-4">
         <h2 className="font-semibold text-amber-700 dark:text-amber-400">
-          recovery only. not a demo step, not in the video.
+          recovery only. not part of the normal sequence.
         </h2>
         <p className="text-zinc-500">
           reclaim is the one hold verb with no escrow check: past expiry, anyone
