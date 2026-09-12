@@ -6,6 +6,11 @@ can price a risk it is not permitted to inspect.
 
 built on the Hedera Asset Tokenization Studio (ATS), for ETHGlobal ETHOnline 2026.
 
+**built solo, by one person directing a team of AI agent configurations running on Claude.**
+every on-chain transaction in this project was signed by a human in MetaMask, not by an
+agent; see [`AI_USAGE.md`](./AI_USAGE.md) for what was AI-written, what was not, and why the
+distinction is checkable rather than asserted.
+
 ---
 
 ## what this is
@@ -332,9 +337,11 @@ account, not by a script holding a key. no private key exists in this repository
 ## evidence
 
 every factual claim in this project traces to a transaction id and a HashScan link in
-[`EVIDENCE.md`](./EVIDENCE.md). if a claim has no line there, it is not made. `EVIDENCE.md`
-is owned by the QA role in this build and is independently re-verified against Hedera's
-mirror node and HashScan, not taken on trust from whichever role built the flow.
+[`EVIDENCE.md`](./EVIDENCE.md). if a claim has no line there, it is not made. `EVIDENCE.md` is
+owned by argus, the AI agent configuration in this build assigned to verification, and every
+entry in it is independently re-checked against Hedera's mirror node and HashScan, not taken
+on trust from whichever agent built the flow. see [`AI_USAGE.md`](./AI_USAGE.md) for what
+"agent" means here.
 
 ---
 
