@@ -85,6 +85,36 @@ export const dynamic = "force-dynamic";
 // the cash lender's desk is called a fund-financing desk here, which is what
 // such a desk is genuinely called and avoids the term CLAUDE.md §8 bans in its
 // finance sense.
+//
+// ---------------------------------------------------------------------------
+// WHY THESE ARE COLUMNS AND NOT A STACK
+// ---------------------------------------------------------------------------
+//
+// the section's job is to show that three parties see three different things.
+// stacked, a reader takes them in sequence and has forgotten the first by the
+// time they reach the third, so the only comparison available is from memory.
+// comparison needs alignment: the same field in the same slot at the same
+// height, so the eye travels across rather than down and the difference is read
+// rather than recalled.
+//
+// the alignment is `grid-rows-subgrid`, not a guessed fixed height. each column
+// spans the same four rows of the parent grid, so `sees` starts on one line
+// across all three however the prose above it wraps. a min-height would hold
+// until someone edits a word.
+//
+// `sees` is the only field that differs by party in a way that matters, so it
+// is the only one given a rule and full contrast. everything above it is set
+// quiet on purpose. a reader who reads nothing else on this section should
+// still come away having compared the three `sees` lines.
+//
+// the grammar is the diagram's, deliberately: columns under small monospace
+// labels, one hairline weight, no second device. the diagram makes the
+// asymmetry a picture, this makes it a table, and meeting it twice in two forms
+// is the point.
+//
+// the order is holder, lender, agent, matching the site navigation, and is not
+// the diagram's left to right order. reordering to match would break the set a
+// reader has already learned from the nav.
 const ROLES = [
   {
     href: "/holder",
@@ -98,7 +128,13 @@ const ROLES = [
     who: "cash lender",
     line: "advances that cash, with no right to the borrower’s books",
     example: "a bank’s fund-financing desk",
-    sees: "the verdict and the advance rate, never the figures behind them",
+    sees: "the verdict and the advance rate",
+    // rendered quieter, below the sees line. the lender is the only party with a
+    // clause about what it does not receive, and setting it apart lets the block
+    // read as an absence rather than announce one. it also keeps all three sees
+    // blocks the same mass, so the column under the diagram stops contradicting
+    // the diagram, whose argument is that the lender receives least.
+    coda: "never the figures behind them",
   },
   {
     href: "/engine",
@@ -122,7 +158,7 @@ export default async function Landing() {
   const p = env.ok ? env.position : null;
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16 sm:py-20">
+    <main className="min-w-0 mx-auto max-w-3xl px-6 py-16 sm:py-20">
       {/* the opening. one sentence, the whole product, before anything else. */}
       <h1 className="max-w-[44ch] text-2xl leading-snug tracking-tight text-balance sm:text-[1.75rem]">
         covenant makes a private credit note financeable for a lender who is
@@ -176,30 +212,63 @@ export default async function Landing() {
 
       <section className="mt-14">
         <SectionLabel>three parties, three views</SectionLabel>
-        <ul className="mt-4 divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+        {/*
+          four rows on the parent, three columns spanning them all. the third
+          row is `1fr` so any slack in the section lands above the `sees` rule
+          and never inside it, which keeps the three rules on one line even if a
+          future edit makes one column's prose a line taller than the others.
+
+          below `md` this collapses to one column. two across would leave a
+          widow and read as a broken row, and at phone width three columns of
+          roughly 90px would be unreadable, so the stack is the honest fallback:
+          comparison by alignment is given up, and each card keeps its own
+          `sees` rule so the field is still the thing the eye lands on.
+
+          the parties are separated by space alone and never by a rule, at
+          either width. a divider between the cards would be the same hairline
+          as the `sees` rule carrying a different meaning, and a reader scanning
+          at speed would have to work out which rule was which. one rule, one
+          meaning: below it is what that party sees.
+        */}
+        <ul className="mt-6 grid gap-y-10 md:grid-cols-3 md:grid-rows-[auto_auto_1fr_auto] md:gap-x-8 md:gap-y-0">
           {ROLES.map((r) => (
-            <li key={r.href}>
+            <li
+              key={r.href}
+              className="md:row-span-4 md:grid md:grid-rows-subgrid"
+            >
               <Link
                 href={r.href}
-                className="group grid gap-1 py-5 sm:grid-cols-[11rem_1fr] sm:gap-6"
+                className="group block md:row-span-4 md:grid md:grid-rows-subgrid"
               >
-                <div className="font-mono text-sm group-hover:underline">
+                <h3 className="font-mono text-sm group-hover:underline">
                   {r.who}
-                </div>
-                <div className="max-w-[52ch] leading-relaxed">
-                  <div>{r.line}</div>
-                  <div className="mt-1 text-zinc-600 dark:text-zinc-400">
-                    <span className="font-mono text-xs text-zinc-500">
-                      for example{" "}
-                    </span>
-                    {r.example}
+                </h3>
+                <p className="mt-2 max-w-[52ch] text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                  {r.line}
+                </p>
+                <p className="mt-2 max-w-[52ch] text-sm leading-relaxed text-zinc-500">
+                  <span className="font-mono text-xs tracking-[0.04em]">
+                    for example{" "}
+                  </span>
+                  {r.example}
+                </p>
+                {/*
+                  the slot. the rule above it is the only one inside this
+                  section, so it is the section's one structural event and it
+                  points at the field that differs.
+                */}
+                <div className="mt-5 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                  <div className="font-mono text-xs tracking-[0.12em] text-zinc-500">
+                    sees
                   </div>
-                  <div className="text-zinc-600 dark:text-zinc-400">
-                    <span className="font-mono text-xs text-zinc-500">
-                      sees{" "}
-                    </span>
+                  <p className="mt-2 max-w-[40ch] leading-relaxed text-pretty">
                     {r.sees}
-                  </div>
+                  </p>
+                  {r.coda ? (
+                    <p className="mt-1 max-w-[40ch] text-sm leading-relaxed text-zinc-500">
+                      {r.coda}
+                    </p>
+                  ) : null}
                 </div>
               </Link>
             </li>
