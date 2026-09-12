@@ -3,7 +3,7 @@
 // covenant. the note holder's view.
 //
 // ---------------------------------------------------------------------------
-// WHO THIS IS FOR, AND WHY IT IS READ ONLY
+// WHO THIS IS FOR, AND WHAT IT CAN DO
 // ---------------------------------------------------------------------------
 //
 // the operator console is a build harness, organised by the order we built
@@ -11,19 +11,18 @@
 // MetaMask account. this page assumes the opposite: someone who has never seen
 // this project, has no account on the register, and has three minutes.
 //
-// so it signs nothing and asks for no wallet. every figure is read live off the
+// so the whole page reads without a wallet. every figure comes live off the
 // note on hedera testnet, through /api/holder/position, and a visitor who
 // copies .env.example to .env.local and runs the dev server sees the real
-// position of a real account on a real token with no further setup. an
-// interactive pledge button would be worse than useless here: the pledge is
-// signed by the note holder's account, a visitor does not hold that key, and
-// `requireSigner` would refuse it. a button that cannot work is a lie told in
-// the most expensive place to tell one.
+// position of a real account on a real token with no further setup. connecting
+// a wallet adds the ability to act and is never the price of entry: if the
+// connect control below ever becomes a gate in front of the position, that is a
+// regression, not a tidier layout.
 //
-// what the page does instead is name the exact call, its parameters and where
-// it is signed, and then read the note's own history to say whether it has
-// happened. when the collateral hold is signed in the operator console this
-// page fills in on its own, because nothing about the outcome is written here.
+// the one action a note holder owns is the pledge, and an institution using
+// this holds its own keys, so the pledge is signed here. `app/holder/pledge.tsx`
+// carries it. release, execute and reclaim are the escrow's and are deliberately
+// absent from this page; see the header of that file.
 //
 // ---------------------------------------------------------------------------
 // WHAT THIS PAGE MUST NOT CONTAIN, AND HOW THAT IS CHECKED
@@ -53,6 +52,7 @@ import {
   Rows,
   VerdictBadge,
 } from "@/app/components/covenant-ui";
+import PledgeCard from "./pledge";
 import type { ChainTx, PositionEnvelope } from "./types";
 
 const POSITION_INTERVAL_MS = 15_000;
@@ -229,8 +229,8 @@ export default function HolderView({
         <div className="flex flex-col gap-1">
           <h1 className="text-base font-semibold">note holder</h1>
           <p className="text-zinc-500">
-            everything below is read live from hedera {position.network}. this
-            page signs nothing and needs no wallet.
+            everything below is read live from hedera {position.network} and
+            needs no wallet. connect one further down to pledge the notes.
           </p>
         </div>
         <div className="flex flex-col items-end gap-1 text-zinc-500">
@@ -545,8 +545,9 @@ export default function HolderView({
                 {position.parties.escrow.id}, destination{" "}
                 {position.parties.lender.id}, with an expiry.
                 <span className="block text-zinc-500">
-                  signed by this account in MetaMask. there is no key anywhere in
-                  this application and nothing on this page can sign for you.
+                  signed by this account in MetaMask, below. there is no key
+                  anywhere in this application: it builds the call and your
+                  wallet signs it.
                 </span>
               </>
             }
@@ -566,12 +567,6 @@ export default function HolderView({
                 ? "a pledge has been created on this note and is no longer open. how it ended is below."
                 : "when a pledge is signed it appears here, read back off the token, without this page being changed."}
             </p>
-            <Link
-              href="/"
-              className="w-fit border border-zinc-400 px-3 py-1 dark:border-zinc-600"
-            >
-              the pledge is signed in the operator console
-            </Link>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -596,6 +591,20 @@ export default function HolderView({
             ))}
           </div>
         )}
+
+        <PledgeCard
+          token={{
+            id: position.token.id,
+            evm: position.token.evm,
+            decimals: position.token.decimals,
+          }}
+          holder={{ id: position.holder.id, evm: position.holder.evm }}
+          escrow={position.parties.escrow}
+          lender={position.parties.lender}
+          notes={pledge}
+          freeLabel={position.notes.free}
+          onPledged={() => void loadPosition(true)}
+        />
       </Panel>
 
       {/* ---------------------------------------------------------------- */}

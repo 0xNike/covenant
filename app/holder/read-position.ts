@@ -11,10 +11,15 @@
 // person who owns 250 notes and wants to know what they are worth.
 //
 // so this file calls those readers, unchanged and unmodified, and narrows what
-// comes back to the handful of facts a holder is actually asking about. no read
-// here is new chain access; `readCouponDiagnostics` and `readHoldDiagnostics`
-// do the work, and the only calls this file adds are `name()`, `symbol()` and
-// one mirror node page of the token's own transaction history.
+// comes back to the handful of facts a holder is actually asking about.
+// `readCouponDiagnostics` and `readHoldDiagnostics` do nearly all the work.
+//
+// the exception is the six headline figures, which this file reads itself, in
+// one batch, from raw uints. see `HEADLINE_ABI` below for why: the diagnostics
+// readers turn a failed call into a zero, which is correct for a console
+// listing preconditions and wrong for the supply figure on the front page.
+// besides those, the only calls added here are one mirror node page of the
+// note's own transaction history.
 //
 // ---------------------------------------------------------------------------
 // WHY NOTHING IN HERE THROWS
@@ -193,10 +198,54 @@ function latest(history: ChainTx[], call: string): ChainTx | null {
 
 // ---------------------------------------------------------------------------
 
-const ERC20_ABI = [
+/**
+ * the headline figures, read in one place and from raw uints.
+ *
+ * this used to be `name()` and `symbol()` only, and the four figures on the
+ * front page came from the diagnostics readers instead. those readers are built
+ * for the operator and swallow a failed call into a zero (`attempt()` in
+ * lib/ats/diagnostics.ts), which is right for a console listing preconditions
+ * and wrong for a headline figure. a failed `decimals()` there returns 0, so
+ * 15000 raw renders as "15,000.00 notes" instead of "150.00", and a failed
+ * `totalSupply()` returns "0.0", which is a truthy string, so the `||` fallback
+ * to the other reader never fired and the page printed "0.00 notes in issue"
+ * beside a non-zero holding.
+ *
+ * so the four figures someone lends against are read here, together, from one
+ * contract on one provider, and scaled once by the decimals read in the same
+ * batch. if any of them does not come back this returns null and the caller
+ * says the read failed rather than printing a zero.
+ */
+const HEADLINE_ABI = [
   "function name() view returns (string)",
   "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function totalSupply() view returns (uint256)",
+  "function balanceOfByPartition(bytes32,address) view returns (uint256)",
+  "function getHeldAmountForByPartition(bytes32,address) view returns (uint256)",
 ];
+
+/**
+ * ATS default partition. the note has only ever used partition 1.
+ *
+ * the same literal as `PARTITION_1_ID` in lib/ats/diagnostics.ts:361, which is
+ * not exported. worth exporting and sharing when that file is next open for
+ * another reason; not worth opening it for.
+ */
+const PARTITION_1 =
+  "0x0000000000000000000000000000000000000000000000000000000000000001";
+
+interface Headline {
+  name: string;
+  symbol: string;
+  decimals: number;
+  /** whole notes in issue */
+  supply: number;
+  /** whole notes the configured holder owns, free of any hold */
+  free: number;
+  /** whole notes the configured holder owns that are locked under a hold */
+  underHold: number;
+}
 
 function withTimeout<T>(
   work: Promise<T>,
@@ -255,24 +304,40 @@ async function read(): Promise<PositionEnvelope> {
   ];
 
   try {
-    const [meta, coupon, hold, history] = await Promise.all([
-      withTimeout(
+    const [headline, coupon, hold, history] = await Promise.all([
+      withTimeout<Headline | null>(
         (async () => {
           const provider = new ethers.JsonRpcProvider(cfg.rpcNode, undefined, {
             staticNetwork: true,
           });
-          const token = new ethers.Contract(note.evm, ERC20_ABI, provider);
-          const [name, symbol] = await Promise.all([
-            token.name(),
-            token.symbol(),
-          ]);
-          return { name: String(name), symbol: String(symbol) };
+          const token = new ethers.Contract(note.evm, HEADLINE_ABI, provider);
+          const me = toEvmAddress(cfg.accounts.holder.evm);
+          // no `attempt()` wrapper and no per-call fallback on purpose. one
+          // rejection rejects the batch, and a rejected batch reads as a failed
+          // read rather than as a zero.
+          const [name, symbol, decimalsRaw, supplyRaw, freeRaw, heldRaw] =
+            await Promise.all([
+              token.name(),
+              token.symbol(),
+              token.decimals(),
+              token.totalSupply(),
+              token.balanceOfByPartition(PARTITION_1, me),
+              token.getHeldAmountForByPartition(PARTITION_1, me),
+            ]);
+          const decimals = Number(decimalsRaw);
+          const scale = (raw: bigint) =>
+            Number(ethers.formatUnits(raw, decimals));
+          return {
+            name: String(name),
+            symbol: String(symbol),
+            decimals,
+            supply: scale(supplyRaw as bigint),
+            free: scale(freeRaw as bigint),
+            underHold: scale(heldRaw as bigint),
+          };
         })(),
         12_000,
-        () => {
-          warnings.push("the note's name and symbol did not come back");
-          return { name: "unreadable", symbol: "" };
-        },
+        () => null,
       ),
       readCouponDiagnostics(cfg, note.evm, [
         { label: "you", ...cfg.accounts.holder },
@@ -291,13 +356,42 @@ async function read(): Promise<PositionEnvelope> {
 
     warnings.push(...coupon.notes, ...hold.notes);
 
-    const me = hold.accounts.find(
-      (a) => a.evm.toLowerCase() === toEvmAddress(cfg.accounts.holder.evm).toLowerCase(),
+    if (!headline) {
+      return {
+        ok: false,
+        error:
+          "the note's supply and balance did not come back from the relay. " +
+          "nothing is shown rather than a figure that might be wrong. reload in a moment.",
+      };
+    }
+
+    const meta = { name: headline.name, symbol: headline.symbol };
+
+    // the compliance row still comes from the hold reader. only the figures
+    // moved: a kyc bit that fails to read is `unreadable`, not a wrong number.
+    const holderRow = hold.accounts.find(
+      (a) =>
+        a.evm.toLowerCase() ===
+        toEvmAddress(cfg.accounts.holder.evm).toLowerCase(),
     );
-    const free = Number(me?.available ?? "0");
-    const underHold = Number(me?.held ?? "0");
+
+    const free = headline.free;
+    const underHold = headline.underHold;
     const held = free + underHold;
-    const supply = Number(coupon.totalSupply || hold.totalSupply || "0");
+    const supply = headline.supply;
+
+    // a zero supply beside a non-zero holding is not a state this token can be
+    // in, so it is a failed read wearing the costume of a figure. it used to
+    // render as "0.00 notes in issue" next to a holding, on the first screen,
+    // and a viewer cannot tell that from a real number.
+    if (supply <= 0 && held > 0) {
+      return {
+        ok: false,
+        error:
+          `the supply read back as zero while the holder's balance read back as ${money(held)}. ` +
+          "those cannot both be true, so the read is being treated as failed rather than shown.",
+      };
+    }
 
     // `readCouponDiagnostics` has already applied `getNominalValueDecimals()`,
     // so this is "1000.0" and not a raw uint. scaling it a second time would
@@ -335,7 +429,7 @@ async function read(): Promise<PositionEnvelope> {
         name: meta.name,
         symbol: meta.symbol,
         hashscan: hashscanContract(cfg, note.id),
-        decimals: coupon.decimals,
+        decimals: headline.decimals,
         totalSupply: money(supply),
       },
 
@@ -343,7 +437,7 @@ async function read(): Promise<PositionEnvelope> {
         id: cfg.accounts.holder.id,
         evm: cfg.accounts.holder.evm,
         hashscan: account(cfg.accounts.holder.id),
-        onRegister: me?.kycStatus === 1,
+        onRegister: holderRow?.kycStatus === 1,
       },
 
       notes: {
