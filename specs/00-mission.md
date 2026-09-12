@@ -10,7 +10,7 @@ set by a confidential compute engine reading the borrower's private financials, 
 lender can price a risk it is not permitted to inspect.
 
 - event: ETHGlobal ETHOnline 2026
-- deadline: **monday 14 september 2026, 11:59am SGT**
+- deadline: **sunday 13 september 2026, 12:00pm EDT = monday 14 september, 00:00 SGT**
 - builder: hao, solo, assisted by the hermes agent team
 
 ## read these before your first action

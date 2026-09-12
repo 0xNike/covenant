@@ -30,7 +30,7 @@ tokenization studio (ATS), against the pre-deployed resolver `0.0.9212226` and f
 | 1 | ATS used to issue and manage a tokenised asset | issuance, the compliance gate, the coupon and the collateral hold are all verified on chain | issuance, G2, G3 and G4: see below |
 | 2 | deployed and demonstrated on hedera testnet | issuance, the compliance gate, the coupon and the collateral hold are all demonstrated on hedera testnet | see gate table |
 | 3 | public github repository, contracts verified on hashscan where applicable | repository confirmed public at the link above (`private: false`, checked via the GitHub API). we deploy no contracts, so there is nothing to verify on hashscan in that sense; instead we show the token deployment and every lifecycle transaction directly on hashscan | confirmed |
-| 4 | demo video, five minutes or less, showing issuance, configuration and at least one lifecycle operation | scripted in `docs/video-script.md`, not yet cut | `[video link: pending]` |
+| 4 | demo video, 2 to 4 minutes, showing issuance, configuration and at least one lifecycle operation | scripted in `docs/video-script.md`, not yet cut | `[video link: pending]` |
 
 ### issuance, verified
 
@@ -407,7 +407,7 @@ document does not repeat beyond what is specific to this prize's gates.
 G2, G3 and G4 are filled in above, with hashscan links, and no longer placeholders. repository
 visibility is confirmed public. what remains:
 
-- `[video link: pending]`, the cut video, under five minutes.
+- `[video link: pending]`, the cut video, under four minutes.
 - `[upstream PR: pending]`, the hashgraph/asset-tokenization-studio pull request, once opened.
 
 none of these are claims made and unproven. they are claims not yet made, marked as such.

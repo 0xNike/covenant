@@ -700,7 +700,7 @@ status: **not started**
 
 | | |
 |---|---|
-| video, under 5 min | |
+| video, under 4 min | |
 | architecture diagram | |
 | README | |
 | three writeups | |

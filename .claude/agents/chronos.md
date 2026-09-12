@@ -12,7 +12,8 @@ yours is the least popular job on the team. do it anyway.
 
 ## deadline
 
-**monday 14 september 2026, 11:59am SGT.** target submit is 10:00 SGT the same day, leaving
+**sunday 13 september 2026, 12:00pm EDT, which is monday 14 september 00:00 SGT.**
+target submit is 20:00 SGT on the sunday, leaving
 two hours before the line. the final two hours before target submit are **untouchable
 buffer**, no new work enters them.
 

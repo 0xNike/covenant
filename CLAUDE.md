@@ -14,7 +14,7 @@ built and *why*. This file governs *how*.
 The failure mode that loses this hackathon is three half-finished integrations. It is not
 running out of ideas. Every scoping decision resolves in favour of finishing.
 
-Deadline: **Monday 14 September 2026, 11:59am SGT.** Treat it as immovable.
+Deadline: **Sunday 13 September 2026, 12:00pm EDT (Monday 14 September, 00:00 SGT).** Treat it as immovable.
 
 ---
 
@@ -274,11 +274,13 @@ Project files we maintain at root:
 
 Encode these; they decide the outcome more than code quality does.
 
-- Demo video **five minutes or less**, showing issuance, configuration, and at least one
-  lifecycle operation
+- Demo video **between 2 and 4 minutes**. Over 4:00 is **automatically rejected at upload**,
+  as is under 2:00, under 720p, a sped-up cut, or an AI voiceover. Must show issuance,
+  configuration, and at least one lifecycle operation
 - Public repo, contracts verified on HashScan **where applicable** — we deploy no contracts,
   so we show token deployment and lifecycle transactions instead
-- Architecture diagram is required for the Chainlink submission
+- Architecture diagram is **not** a stated Chainlink requirement. we keep
+  `docs/architecture.md` because it helps on technicality, not because it is a gate
 - Maximum **three** partner prizes per ETHGlobal submission
 - Judging is **asynchronous**. There is no Q&A. Nothing can be explained after the fact.
 - AI tools may assist but not author the whole project; spec files and prompts must be in

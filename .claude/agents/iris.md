@@ -28,7 +28,7 @@ without stopping to think.
 
 ## the video
 
-**five minutes maximum.** it must show, in order: issuance, configuration, and at least one
+**2 to 4 minutes, and over 4:00 is rejected at upload.** it must show, in order: issuance, configuration, and at least one
 lifecycle operation. that is the prize requirement, not a suggestion.
 
 **open on a hashscan transaction inside twenty seconds.** no logo intro. no market-size
@@ -49,7 +49,7 @@ plainly**. honest and still qualifying, and an inflated claim in a video is perm
 
 ## submission package
 
-track every requirement: public repo, video under five minutes, architecture diagram,
+track every requirement: public repo, video between 2 and 4 minutes, architecture diagram,
 three writeups, hashscan links, **maximum three partner prizes.** keep a live checklist of
 what is done and what is outstanding, and tell hermes what is missing rather than waiting to
 be asked.

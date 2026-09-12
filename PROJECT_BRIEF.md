@@ -2,7 +2,7 @@
 
 **Project codename:** Covenant
 **Event:** ETHGlobal ETHOnline 2026
-**Hard deadline:** Monday 14 September 2026, 11:59am SGT
+**Hard deadline:** Sunday 13 September 2026, 12:00pm EDT (Monday 14 September, 00:00 SGT)
 **Builder:** Hao (solo, assisted by the Hermes agent team)
 
 ---
@@ -155,7 +155,7 @@ Gates (all mandatory):
 - [ ] ATS used to issue and manage a tokenised asset
 - [ ] Deployed and demonstrated on Hedera **testnet**
 - [ ] Public GitHub repo, contracts verified on HashScan where applicable
-- [ ] Demo video ≤5 min showing **issuance, configuration, and at least one lifecycle op**
+- [ ] Demo video 2 to 4 min showing **issuance, configuration, and at least one lifecycle op**
 
 Extra points (targeting 4 of 6):
 - [x] Compliance controls — KYC grants, blocked transfer, permitted transfer
@@ -283,7 +283,7 @@ Ship order. Each line must be true before the next is attempted.
    rate is posted by a role-gated `setRate` and the token stamps a coupon from it.
 5. A hold is created, then executed on default. Recorded.
 6. Confidential engine swapped behind a CRE `handlerInTee`, simulation evidence captured.
-7. Video ≤5 min, README, per-prize writeups, HashScan links, upstream PR.
+7. Video 2 to 4 min, README, per-prize writeups, HashScan links, upstream PR.
 
 **1 through 3 alone is a complete, submittable Hedera entry.** Everything after that is
 upside. Never risk 1-3 to reach 6.

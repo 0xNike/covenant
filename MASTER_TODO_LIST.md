@@ -7,11 +7,11 @@ remaining: the video (three takes and an edit), and CRE, which is expendable.
 | | |
 |---|---|
 | now | thu 10 sep 2026, 03:24 SGT |
-| deadline | mon 14 sep 2026, 11:59 SGT |
+| deadline | **sun 13 sep 12:00 EDT = mon 14 sep 00:00 SGT** |
 | wall clock | 104.6 h |
 | build order | 40 working h (CLAUDE.md §5) |
 | slack | ~64 h for sleep, meals, and overrun |
-| target submit | mon 14 sep, 10:00 SGT. two hours before the line. |
+| target submit | **sun 13 sep, 20:00 SGT.** four hours before the line. |
 
 CRE is **in**. the hours 26-30 timebox stays at 4 hours and chronos still calls it.
 
@@ -33,6 +33,9 @@ as anything a tool can invoke. formation means writing them.
       zeus, rudolph, argus, iris. haiku for chronos.
 - [x] **0.4** deadline corrected in `PROJECT_BRIEF.md:5` and `CLAUDE.md:17` to
       "monday 14 september 2026, 11:59am SGT". approved by hao.
+      **superseded 12 sep.** that was still wrong. the real deadline is sunday 13 september
+      12:00pm EDT, which is monday 14 september 00:00 SGT. we read it off the submission
+      rules rather than the brief and lost 12 hours of assumed runway. corrected everywhere.
 - [x] **0.5** reconcile `CLAUDE.md` §6. its paths are relative to the ATS clone, not this
       repo. rewrite §6 to name the sibling clone as read-only reference and this repo as
       where our code lives. see D1, approved.
@@ -343,7 +346,7 @@ do not start until every gate above is green **and block G is drafted**.
 
 ### block G. submission. sat 12 sep to sun 13 sep
 
-- [ ] **3.31** iris: **video, five minutes or less.** issuance, configuration, at least one
+- [ ] **3.31** iris: **video, 4 minutes maximum, 2 minimum.** issuance, configuration, at least one
       lifecycle op. **open on a hashscan transaction inside twenty seconds.** no logo intro,
       no market-size slide. the four shots: blocked transfer, kyc grant, permitted transfer,
       `executeHoldByPartition` firing. then the confidentiality reveal, engine inputs on
@@ -371,9 +374,13 @@ do not start until every gate above is green **and block G is drafted**.
 - [ ] **3.37** argus: every claim in every writeup traces to a link in `EVIDENCE.md`.
 - [ ] **G6 — needs hao.**
 
-### block H. buffer. sun 13 sep 22:00 to mon 14 sep 10:00. untouchable
+### block H. buffer. **sun 13 sep 20:00 to 22:00 SGT. untouchable.**
 
-no new work. submit at 10:00 SGT.
+no new work. **submit at 22:00 SGT on sunday**, two hours before the line.
+
+the deadline is **mon 14 sep 00:00 SGT**, which is sunday 13 sep 12:00pm EDT. the previous
+version of this block submitted at 10:00 SGT on monday, **ten hours after the deadline had
+closed.** apollo halted it. corrected 12 sep.
 
 ---
 
@@ -408,7 +415,7 @@ writing it. their `.claude/` holds `commands/docs/update-docs.md` and a
 **status: hao approved, 10 sep.**
 
 **D2. CRE retained.** at the 11 sep reading the 4 hour CRE timebox did not fit. at the real
-14 sep deadline it fits with room. all three prizes attempted. the 4 hour timebox and
+14 sep deadline it fits with room. three prizes attempted at the time; now two, see the open source withdrawal. the 4 hour timebox and
 chronos' authority to call it are unchanged.
 **status: hao decided, 10 sep.**
 

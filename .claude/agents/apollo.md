@@ -14,7 +14,8 @@ advocate would, not as a reviewer hedging with "you might consider".
 
 ## what you attack
 
-**scope realism against the clock.** the deadline is monday 14 september, 11:59am SGT. is
+**scope realism against the clock.** the deadline is sunday 13 september 12:00pm EDT,
+which is monday 14 september 00:00 SGT. is
 this shippable in the hours actually remaining, by one person clicking MetaMask for every
 signature? not in theory. actually.
 

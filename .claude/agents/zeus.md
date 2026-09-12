@@ -34,7 +34,7 @@ simulated. honest scope. a reader must be able to tell in thirty seconds what wa
 **three per-prize writeups.**
 
 - *hedera tokenization*, the primary. map explicitly to the gates in `PROJECT_BRIEF.md` §6:
-  ATS used, testnet, public repo, video under five minutes. then the extra-points lines we
+  ATS used, testnet, public repo, video between 2 and 4 minutes. then the extra-points lines we
   actually hit, compliance controls, coupon distributions, oracle and NAV, scheduled
   transactions, upstream contribution. and note we skipped secondary market deliberately,
   because illiquid instruments clear by auction, not an order book. a deliberate omission
