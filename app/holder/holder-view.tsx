@@ -3,26 +3,27 @@
 // covenant. the note holder's view.
 //
 // ---------------------------------------------------------------------------
-// WHO THIS IS FOR, AND WHAT IT CAN DO
+// WHAT THIS PAGE IS
 // ---------------------------------------------------------------------------
 //
-// the operator console is a build harness, organised by the order we built
-// things in, and it assumes the person at the keyboard holds the issuer's
-// MetaMask account. this page assumes the opposite: someone who has never seen
-// this project, has no account on the register, and has three minutes.
+// one card: the position, the pledge, and the advance it raises. that card is
+// the product and it is the first and only thing above the fold. everything
+// else on this route is reference material and sits inside a disclosure the
+// reader opens on purpose.
 //
-// so the whole page reads without a wallet. every figure comes live off the
-// note on hedera testnet, through /api/holder/position, and a visitor who
-// copies .env.example to .env.local and runs the dev server sees the real
-// position of a real account on a real token with no further setup. connecting
-// a wallet adds the ability to act and is never the price of entry: if the
-// connect control below ever becomes a gate in front of the position, that is a
-// regression, not a tidier layout.
+// this page was a thousand words of explanation with the action buried in the
+// middle of it. the mechanism is not wrong and it has not been deleted, it has
+// moved to README.md, which is where a judge reads an argument. an application
+// shows a position and an action.
 //
-// the one action a note holder owns is the pledge, and an institution using
-// this holds its own keys, so the pledge is signed here. `app/holder/pledge.tsx`
+// it still reads end to end with no wallet. every figure comes live off the
+// note on hedera testnet through /api/holder/position, and connecting a wallet
+// only adds the ability to sign. if the connect control ever becomes a gate in
+// front of the position, that is a regression.
+//
+// the one action a note holder owns is the pledge. `app/holder/pledge.tsx`
 // carries it. release, execute and reclaim are the escrow's and are deliberately
-// absent from this page; see the header of that file.
+// absent; see the header of that file.
 //
 // ---------------------------------------------------------------------------
 // WHAT THIS PAGE MUST NOT CONTAIN, AND HOW THAT IS CHECKED
@@ -46,11 +47,10 @@ import { fetchDisclosure } from "@/lib/engine/disclosure-client";
 import type { LenderDisclosure } from "@/lib/engine/types";
 import {
   EngineStamp,
-  Metric,
-  Panel,
   Row,
   Rows,
   VerdictBadge,
+  statusTextClasses,
 } from "@/app/components/covenant-ui";
 import PledgeCard from "./pledge";
 import type { ChainTx, PositionEnvelope } from "./types";
@@ -78,7 +78,7 @@ function readable(isoString: string): string {
 }
 
 function TxLink({ tx, label }: { tx: ChainTx | null; label?: string }) {
-  if (!tx) return <span className="text-zinc-500">no transaction</span>;
+  if (!tx) return <span className="text-zinc-500">none</span>;
   return (
     <a
       href={tx.hashscan}
@@ -86,50 +86,35 @@ function TxLink({ tx, label }: { tx: ChainTx | null; label?: string }) {
       rel="noreferrer"
       className="underline underline-offset-2"
     >
-      {label ?? tx.call} on hashscan
+      {label ?? tx.call}
     </a>
   );
 }
 
 /**
- * one of the three ways a pledge ends, with whether it has happened.
+ * a section the reader opens on purpose.
  *
- * drawn as a row of three rather than as prose because the point is that all
- * three are real calls on the same token and exactly one of them will run. a
- * paragraph makes them read as a description of a system; three boxes make them
- * read as three outcomes with a state each.
+ * the reference material on this route is real and a credit person will want
+ * it, but none of it is the product, and putting it in front of the card was
+ * what made this page read as documentation. closed by default, one line of
+ * summary, no prose inside.
  */
-function Outcome({
+function Fold({
   title,
-  call,
-  who,
-  what,
-  tx,
-  pending,
+  children,
 }: {
   title: string;
-  call: string;
-  who: string;
-  what: string;
-  tx: ChainTx | null;
-  pending: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-1 basis-64 flex-col gap-2 border border-zinc-300 p-3 dark:border-zinc-700">
-      <div className="text-base font-semibold">{title}</div>
-      <div className="text-zinc-500">{call}</div>
-      <p>{what}</p>
-      <p className="text-zinc-500">signed by {who}.</p>
-      {tx ? (
-        <div className="border border-emerald-600 px-2 py-1 text-emerald-700 dark:text-emerald-400">
-          done. <TxLink tx={tx} label="see it" />
-        </div>
-      ) : (
-        <div className="border border-zinc-300 px-2 py-1 text-zinc-500 dark:border-zinc-700">
-          {pending}
-        </div>
-      )}
-    </div>
+    <details className="border border-zinc-300 dark:border-zinc-700">
+      <summary className="cursor-pointer px-4 py-3 select-none">
+        {title}
+      </summary>
+      <div className="flex flex-col gap-3 border-t border-zinc-300 px-4 py-4 dark:border-zinc-700">
+        {children}
+      </div>
+    </details>
   );
 }
 
@@ -206,7 +191,7 @@ export default function HolderView({
 
   if (!position) {
     return (
-      <main className="mx-auto flex max-w-4xl flex-col gap-4 px-6 py-10 font-mono text-sm">
+      <main className="mx-auto flex max-w-2xl flex-col gap-4 px-6 py-10 font-mono text-sm">
         <h1 className="text-base font-semibold">note holder</h1>
         <p className="border border-red-600 p-3 text-red-700 dark:text-red-400">
           {envelope.ok ? "no position" : envelope.error}
@@ -224,374 +209,102 @@ export default function HolderView({
   const live = position.holds.filter((h) => !h.expired);
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-8 font-mono text-sm">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-1">
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-6 py-8 font-mono text-sm">
+      {/* ================================================================ */}
+      {/* the card. the position and the one action, before any scrolling. */}
+      {/* ================================================================ */}
+      <section className="flex flex-col border-2 border-zinc-900 dark:border-zinc-100">
+        <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-zinc-300 px-5 py-3 dark:border-zinc-700">
           <h1 className="text-base font-semibold">note holder</h1>
-          <p className="text-zinc-500">
-            everything below is read live from hedera {position.network} and
-            needs no wallet. connect one further down to pledge the notes.
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-1 text-zinc-500">
           <a
             href={position.holder.hashscan}
             target="_blank"
             rel="noreferrer"
-            className="underline underline-offset-2"
+            className="text-zinc-500 underline underline-offset-2"
           >
             {position.holder.id}
           </a>
-          <div className="flex items-center gap-2">
-            <span>read {readable(position.readAtIso)}</span>
-            <button
-              onClick={() => void onRefresh()}
-              disabled={refreshing}
-              className="border border-zinc-400 px-2 py-0.5 disabled:opacity-50 dark:border-zinc-600"
-            >
-              {refreshing ? "reading" : "refresh"}
-            </button>
+        </header>
+
+        {/* the position, at the size it deserves */}
+        <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 px-5 py-5">
+          <div className="flex flex-col gap-1">
+            <span className="text-zinc-500">notes held</span>
+            <span className="text-5xl leading-none font-semibold tabular-nums">
+              {position.notes.held}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 sm:items-end">
+            <span className="text-zinc-500">face value</span>
+            <span className="text-2xl leading-none tabular-nums">
+              {position.nominal.held}
+            </span>
+            <span className="text-zinc-500 tabular-nums">
+              {position.rate.percent} a year
+            </span>
           </div>
         </div>
-      </header>
 
-      {/* ---------------------------------------------------------------- */}
-      <Panel
-        title="what i hold"
-        subtitle={`${position.token.name} (${position.token.symbol})`}
-      >
-        <div className="flex flex-wrap gap-8">
-          <Metric label="notes held" value={position.notes.held} />
-          <Metric label="nominal" value={position.nominal.held} />
-          <Metric label="rate on the note" value={position.rate.percent} />
-        </div>
-
-        <Rows>
-          <Row
-            label="share of issue"
-            value={`${position.notes.sharePercent} of ${position.token.totalSupply} in issue`}
-          />
-          <Row
-            label="nominal each"
-            value={`${position.nominal.perNote}, so ${position.notes.held} notes are ${position.nominal.held} of claim`}
-          />
-          <Row
-            label="how it pays"
-            value={
-              <>
-                {position.rate.percent} a year, rate type {position.rate.typeLabel}.
-                the token holds this rate in its own storage and stamps it onto
-                every coupon itself, refusing any rate a caller supplies. posted
-                by <TxLink tx={position.rate.postedBy} label="setRate" />
-              </>
-            }
-          />
-          <Row
-            label="paid so far"
-            value={
-              position.coupon.entitlement === null ? (
-                <span className="text-zinc-500">no coupon declared yet</span>
-              ) : (
-                <>
-                  {position.coupon.entitlement} for the period to{" "}
-                  {readable(position.coupon.periodEndIso)}, at{" "}
-                  {position.coupon.ratePercent}.{" "}
-                  declared by{" "}
-                  <TxLink tx={position.coupon.declaredBy} label="setCoupon" />
-                  <span className="block text-zinc-500">
-                    the token fixes the register at the record date and makes the
-                    entitlement readable. it moves no value. settlement is a
-                    separate payment by the agent.
-                  </span>
-                </>
-              )
-            }
-          />
-          <Row
-            label="maturity"
-            value={
-              <>
-                {readable(position.maturity.iso)}
-                {position.maturity.matured ? ", reached" : ", not yet reached"}
-                {position.maturity.changedBy && (
-                  <span className="block text-zinc-500">
-                    the date was moved after issuance to compress a three year
-                    life into a demo. the name still carries the original tenor.
-                    moved by{" "}
-                    <TxLink
-                      tx={position.maturity.changedBy}
-                      label="updateMaturityDate"
-                    />
-                  </span>
-                )}
-              </>
-            }
-          />
-          <Row
-            label="register"
-            value={
-              position.holder.onRegister ? (
-                <>
-                  this account is verified on the token&apos;s register, so it may
-                  hold and move the note.{" "}
-                  they arrived by{" "}
-                  <TxLink
-                    tx={position.notes.arrivedBy}
-                    label="transferByPartition"
-                  />
-                </>
-              ) : (
-                <span className="text-red-700 dark:text-red-400">
-                  this account is not verified on the register. the token refuses
-                  transfers to it.
-                </span>
-              )
-            }
-          />
-          <Row
-            label="the note"
-            value={
-              <a
-                href={position.token.hashscan}
-                target="_blank"
-                rel="noreferrer"
-                className="underline underline-offset-2"
-              >
-                {position.token.id} on hashscan
-              </a>
-            }
-          />
-        </Rows>
-      </Panel>
-
-      {/* ---------------------------------------------------------------- */}
-      <Panel
-        title="raise an advance against this note"
-        subtitle="the lender advances against the note as collateral, at a rate it did not set and cannot check"
-      >
-        {disclosure === null ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-zinc-500">
-              no covenant report has been published to this server. the terms
-              below cannot be shown until the engine has run.
-            </p>
-            <p className="text-zinc-500">
-              the {position.rate.percent} on this note came from an earlier run
-              and is already on chain.{" "}
-              <TxLink tx={position.rate.postedBy} label="that transaction" /> is
-              the evidence of it.
-            </p>
-            <Link
-              href="/engine"
-              className="w-fit border border-zinc-900 px-3 py-1 dark:border-zinc-100"
-            >
-              run the engine
-            </Link>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <VerdictBadge status={disclosure.verdict} />
-
-            <div className="flex flex-wrap gap-8">
-              <Metric
-                label="haircut"
-                value={percentFromBps(disclosure.haircutBps)}
-                status={disclosure.verdict}
-              />
-              <Metric
-                label="advance rate"
-                value={percentFromBps(disclosure.advanceRateBps)}
-                status={disclosure.verdict}
-              />
-            </div>
-
-            <div className="flex flex-wrap items-end gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-zinc-500">notes to pledge</span>
+        {/* in, then out. 1px of page shows between the two panels. */}
+        <div className="flex flex-col gap-px bg-zinc-300 dark:bg-zinc-700">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 bg-zinc-50 px-5 py-4 dark:bg-zinc-900">
+            <label className="flex flex-col gap-1">
+              <span className="text-zinc-500">pledge</span>
+              <span className="flex items-baseline gap-2">
                 <input
                   inputMode="decimal"
                   value={pledgeInput}
                   placeholder={money(free)}
                   onChange={(e) => setPledgeInput(e.target.value)}
-                  className="w-40 border border-zinc-400 bg-transparent px-2 py-1 tabular-nums dark:border-zinc-600"
+                  className="w-52 border-b border-zinc-400 bg-transparent text-3xl tabular-nums outline-none dark:border-zinc-600"
                 />
-              </label>
+                <span className="text-zinc-500">notes</span>
+              </span>
+            </label>
+            <div className="flex items-center gap-3 pb-1 text-zinc-500">
+              <span className="tabular-nums">free {position.notes.free}</span>
               <button
                 onClick={() => setPledgeInput("")}
-                className="border border-zinc-400 px-3 py-1 dark:border-zinc-600"
+                className="border border-zinc-400 px-2 py-0.5 dark:border-zinc-600"
               >
-                all {money(free)}
+                all
               </button>
-              <span className="pb-1 text-zinc-500">
-                free to pledge: {position.notes.free}. under hold:{" "}
-                {position.notes.underHold}.
-              </span>
             </div>
+          </div>
 
-            <Rows>
-              <Row label="collateral" value={`${money(collateral)} nominal`} />
-              <Row
-                label="advance"
-                value={
-                  <span className="text-base font-semibold">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 bg-zinc-50 px-5 py-4 dark:bg-zinc-900">
+            {disclosure === null ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-zinc-500">
+                  no covenant report published
+                </span>
+                <Link
+                  href="/engine"
+                  className="border border-zinc-900 px-3 py-1 dark:border-zinc-100"
+                >
+                  run the engine
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-1">
+                  <span className="text-zinc-500">receive</span>
+                  <span className="text-3xl leading-none font-semibold tabular-nums">
                     {advance === null ? "unavailable" : money(advance)}
                   </span>
-                }
-              />
-              <Row
-                label="held back"
-                value={`${cover === null ? "unavailable" : money(cover)}, the haircut. the lender's cover if this defaults.`}
-              />
-            </Rows>
-
-            <div className="flex flex-col gap-2 border-l-4 border-zinc-400 pl-3 dark:border-zinc-600">
-              <p>
-                the haircut is set by the covenant engine from the borrower&apos;s
-                financial statements. you do not see those statements and neither
-                does the lender. the verdict and the haircut are the whole of what
-                leaves the engine.
-              </p>
-              <p className="text-zinc-500">
-                stated plainly, because it is the first thing a credit person will
-                work out: the haircut is a published function of the borrower&apos;s
-                leverage ratio, so anyone holding it can recover that ratio. that
-                is deliberate and it is what a lender is owed. the filing behind
-                the ratio is five separate figures and one ratio does not
-                determine any of them.
-              </p>
-            </div>
-
-            <Rows>
-              <Row label="borrower" value={disclosure.borrower} />
-              <Row label="period" value={disclosure.period} />
-              <Row label="covenant terms" value={disclosure.policyId} />
-              <Row label="run" value={disclosure.runId} />
-            </Rows>
-            <EngineStamp engine={disclosure.engine} />
-            <p className="text-zinc-500">
-              the lender is shown exactly this and nothing more.{" "}
-              <Link href="/lender" className="underline underline-offset-2">
-                their view is at /lender
-              </Link>
-              .
-            </p>
+                  <span className="text-zinc-500 tabular-nums">
+                    {percentFromBps(disclosure.advanceRateBps)} advance rate,{" "}
+                    {percentFromBps(disclosure.haircutBps)} haircut held back
+                    {cover === null ? "" : ` (${money(cover)})`}
+                  </span>
+                </div>
+                <VerdictBadge status={disclosure.verdict} />
+              </>
+            )}
           </div>
-        )}
-      </Panel>
-
-      {/* ---------------------------------------------------------------- */}
-      <Panel
-        title="the pledge"
-        subtitle="what actually happens to the notes when you raise against them"
-      >
-        <div className="flex flex-col gap-2">
-          <p>
-            the notes stay in your account. they are not transferred to the
-            lender, not wrapped, and not sent anywhere. the token marks part of
-            your balance as held.
-          </p>
-          <p>
-            while they are held you cannot move them, and neither can the lender.
-            one named third party, the escrow, decides what happens to them.
-          </p>
         </div>
 
-        <Rows>
-          <Row
-            label="escrow"
-            value={
-              <>
-                <a
-                  href={position.parties.escrow.hashscan}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-2"
-                >
-                  {position.parties.escrow.id}
-                </a>
-                , the covenant engine. the only account that may release the notes
-                back to you or move them to the lender.
-                <span className="block text-zinc-500">
-                  it is not the agent. the agent that issued this note, granted
-                  the register and declared the coupon is{" "}
-                  {position.parties.agent.id}, and it has no say in this outcome.
-                  that separation is the point of the arrangement.
-                </span>
-              </>
-            }
-          />
-          <Row
-            label="destination"
-            value={
-              <>
-                <a
-                  href={position.parties.lender.hashscan}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-2"
-                >
-                  {position.parties.lender.id}
-                </a>
-                , the lender. fixed when the pledge is created, so the escrow
-                cannot send the collateral anywhere else.
-              </>
-            }
-          />
-          <Row
-            label="the call"
-            value={
-              <>
-                createHoldByPartition, partition 1, {money(pledge)} notes, escrow{" "}
-                {position.parties.escrow.id}, destination{" "}
-                {position.parties.lender.id}, with an expiry.
-                <span className="block text-zinc-500">
-                  signed by this account in MetaMask, below. there is no key
-                  anywhere in this application: it builds the call and your
-                  wallet signs it.
-                </span>
-              </>
-            }
-          />
-        </Rows>
-
-        {live.length === 0 ? (
-          <div className="flex flex-col gap-2 border border-zinc-300 p-3 dark:border-zinc-700">
-            <p className="text-base">
-              {position.lifecycle.pledged
-                ? "no notes are held right now."
-                : "nothing is pledged on this note yet."}
-            </p>
-            <p className="text-zinc-500">
-              {position.notes.free} notes are free to move.{" "}
-              {position.lifecycle.pledged
-                ? "a pledge has been created on this note and is no longer open. how it ended is below."
-                : "when a pledge is signed it appears here, read back off the token, without this page being changed."}
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {live.map((h) => (
-              <div
-                key={h.holdId}
-                className="flex flex-col gap-2 border border-emerald-600 p-3"
-              >
-                <div className="text-base font-semibold">
-                  {h.amount} notes held, hold {h.holdId}
-                </div>
-                <Rows>
-                  <Row label="escrow" value={h.escrowLabel} tone={h.escrowIsEngine ? "pass" : "breach"} />
-                  <Row
-                    label="destination"
-                    value={h.destinationPinned ? h.destinationLabel : "not fixed, the escrow may send anywhere"}
-                    tone={h.destinationIsLender ? "pass" : "breach"}
-                  />
-                  <Row label="expires" value={readable(h.expiryIso)} />
-                </Rows>
-              </div>
-            ))}
-          </div>
-        )}
-
+        {/* the terms of the hold, as labelled facts, and the signature */}
         <PledgeCard
           token={{
             id: position.token.id,
@@ -602,81 +315,255 @@ export default function HolderView({
           escrow={position.parties.escrow}
           lender={position.parties.lender}
           notes={pledge}
-          freeLabel={position.notes.free}
           onPledged={() => void loadPosition(true)}
         />
-      </Panel>
+      </section>
 
-      {/* ---------------------------------------------------------------- */}
-      <Panel
-        title="how this ends"
-        subtitle="three outcomes, three real calls on this token, exactly one of them runs"
-      >
-        <div className="flex flex-wrap gap-3">
-          <Outcome
-            title="you repay"
-            call="releaseHoldByPartition"
-            who="the escrow"
-            what="the hold is lifted and the notes are free again. they never left your account."
-            tx={position.lifecycle.released}
-            pending="not yet"
-          />
-          <Outcome
-            title="you default"
-            call="executeHoldByPartition"
-            who="the escrow"
-            what="the held notes move to the lender. the amount that moves was set by the haircut, which the lender never saw the inputs to."
-            tx={position.lifecycle.executed}
-            pending="not yet"
-          />
-          <Outcome
-            title="nobody acts"
-            call="reclaimHoldByPartition"
-            who="you"
-            what="after the expiry both calls above revert. the hold lapses and you take the notes back."
-            tx={position.lifecycle.reclaimed}
-            pending="not yet"
-          />
-        </div>
+      {/*
+        the boundary, once, the way /lender states it. a credit person works it
+        out in ten seconds and it is far better that the page said it first.
+      */}
+      {disclosure && (
         <p className="text-zinc-500">
-          the pledge itself:{" "}
-          {position.lifecycle.pledged ? (
-            <TxLink tx={position.lifecycle.pledged} label="createHoldByPartition" />
-          ) : (
-            "not created yet"
-          )}
+          the haircut is set from what the borrower owes against what it earns,
+          against bounds published at issuance, so holding the haircut recovers
+          that one ratio. the five figures behind the ratio reach neither this
+          page nor the lender&apos;s.{" "}
+          <Link href="/lender" className="underline underline-offset-2">
+            the lender sees exactly this
+          </Link>
           .
         </p>
-      </Panel>
+      )}
 
-      {/* ---------------------------------------------------------------- */}
-      <Panel
-        title="on chain"
-        subtitle={`every call ever made against this note, ${position.history.length} of them, read from the mirror node`}
-      >
-        <ol className="flex flex-col gap-1">
-          {position.history.map((tx) => (
-            <li key={tx.hash} className="flex flex-wrap gap-3">
-              <span className="w-44 text-zinc-500">{readable(tx.atIso)}</span>
-              <span className={tx.ok ? "" : "text-red-700 dark:text-red-400"}>
-                {tx.call}
-                {tx.ok ? "" : ", reverted"}
-              </span>
-              <a
-                href={tx.hashscan}
-                target="_blank"
-                rel="noreferrer"
-                className="text-zinc-500 underline underline-offset-2"
-              >
-                {tx.hash.slice(0, 12)}
-              </a>
-            </li>
+      {live.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {live.map((h) => (
+            <div
+              key={h.holdId}
+              className="flex flex-col gap-2 border border-emerald-600 p-4"
+            >
+              <div className="text-base font-semibold">
+                {h.amount} notes held, hold {h.holdId}
+              </div>
+              <Rows>
+                <Row
+                  label="escrow"
+                  value={h.escrowLabel}
+                  tone={h.escrowIsEngine ? "pass" : "breach"}
+                />
+                <Row
+                  label="destination"
+                  value={
+                    h.destinationPinned ? h.destinationLabel : "not fixed"
+                  }
+                  tone={h.destinationIsLender ? "pass" : "breach"}
+                />
+                <Row label="expires" value={readable(h.expiryIso)} />
+              </Rows>
+            </div>
           ))}
-        </ol>
-        {position.history.length === 0 && (
-          <p className="text-zinc-500">no history came back from the mirror node.</p>
+        </div>
+      )}
+
+      {/* ================================================================ */}
+      {/* below the fold. reference, opened on purpose.                    */}
+      {/* ================================================================ */}
+      <div className="mt-4 flex flex-col gap-2">
+        <Fold title="the note">
+          <Rows>
+            <Row
+              label="note"
+              value={`${position.token.name} (${position.token.symbol})`}
+            />
+            <Row
+              label="token"
+              value={
+                <a
+                  href={position.token.hashscan}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  {position.token.id}
+                </a>
+              }
+            />
+            <Row
+              label="share of issue"
+              value={`${position.notes.sharePercent} of ${position.token.totalSupply}`}
+            />
+            <Row label="face value each" value={position.nominal.perNote} />
+            <Row label="under hold" value={position.notes.underHold} />
+            <Row
+              label="rate"
+              value={
+                <>
+                  {position.rate.percent}, type {position.rate.typeLabel}, held
+                  in the token&apos;s own storage and stamped onto every coupon
+                  by the token.{" "}
+                  <TxLink tx={position.rate.postedBy} label="setRate" />
+                </>
+              }
+            />
+            <Row
+              label="coupon"
+              value={
+                position.coupon.entitlement === null ? (
+                  "none declared"
+                ) : (
+                  <>
+                    {position.coupon.entitlement} to{" "}
+                    {readable(position.coupon.periodEndIso)} at{" "}
+                    {position.coupon.ratePercent}, an entitlement the token
+                    makes readable. settlement is a separate payment.{" "}
+                    <TxLink
+                      tx={position.coupon.declaredBy}
+                      label="setCoupon"
+                    />
+                  </>
+                )
+              }
+            />
+            <Row
+              label="maturity"
+              value={
+                <>
+                  {readable(position.maturity.iso)}
+                  {position.maturity.matured ? ", reached" : ", not reached"}
+                  {position.maturity.changedBy && (
+                    <>
+                      , moved to compress a three year life into a demo.{" "}
+                      <TxLink
+                        tx={position.maturity.changedBy}
+                        label="updateMaturityDate"
+                      />
+                    </>
+                  )}
+                </>
+              }
+            />
+            <Row
+              label="compliance"
+              value={
+                position.holder.onRegister ? (
+                  <>
+                    verified, so this account may hold and move the note.{" "}
+                    <TxLink
+                      tx={position.notes.arrivedBy}
+                      label="transferByPartition"
+                    />
+                  </>
+                ) : (
+                  <span className="text-red-700 dark:text-red-400">
+                    not verified. the token refuses transfers to it.
+                  </span>
+                )
+              }
+            />
+            <Row
+              label="read"
+              value={
+                <span className="flex flex-wrap items-center gap-2">
+                  {readable(position.readAtIso)}
+                  <button
+                    onClick={() => void onRefresh()}
+                    disabled={refreshing}
+                    className="border border-zinc-400 px-2 py-0.5 disabled:opacity-50 dark:border-zinc-600"
+                  >
+                    {refreshing ? "reading" : "refresh"}
+                  </button>
+                </span>
+              }
+            />
+          </Rows>
+        </Fold>
+
+        <Fold title="how a pledge ends">
+          <Rows>
+            <Row
+              label="you repay"
+              value={
+                <>
+                  releaseHoldByPartition, by the escrow. the hold lifts.{" "}
+                  <TxLink tx={position.lifecycle.released} />
+                </>
+              }
+            />
+            <Row
+              label="you default"
+              value={
+                <>
+                  executeHoldByPartition, by the escrow. the held notes move to
+                  the lender. <TxLink tx={position.lifecycle.executed} />
+                </>
+              }
+            />
+            <Row
+              label="nobody acts"
+              value={
+                <>
+                  reclaimHoldByPartition, by you, after the expiry.{" "}
+                  <TxLink tx={position.lifecycle.reclaimed} />
+                </>
+              }
+            />
+            <Row
+              label="the pledge"
+              value={
+                <TxLink
+                  tx={position.lifecycle.pledged}
+                  label="createHoldByPartition"
+                />
+              }
+            />
+          </Rows>
+        </Fold>
+
+        {disclosure && (
+          <Fold title="the covenant report">
+            <div className="flex flex-wrap items-center gap-4">
+              <span
+                className={`text-base font-semibold ${statusTextClasses(disclosure.verdict)}`}
+              >
+                {percentFromBps(disclosure.haircutBps)} haircut
+              </span>
+              <span className="tabular-nums">
+                {percentFromBps(disclosure.advanceRateBps)} advance rate
+              </span>
+            </div>
+            <Rows>
+              <Row label="borrower" value={disclosure.borrower} />
+              <Row label="period" value={disclosure.period} />
+              <Row label="covenant terms" value={disclosure.policyId} />
+              <Row label="run" value={disclosure.runId} />
+            </Rows>
+            <EngineStamp engine={disclosure.engine} />
+          </Fold>
         )}
-      </Panel>
+
+        <Fold title={`on chain, ${position.history.length} calls`}>
+          <ol className="flex flex-col gap-1">
+            {position.history.map((tx) => (
+              <li key={tx.hash} className="flex flex-wrap gap-3">
+                <span className="w-44 text-zinc-500">{readable(tx.atIso)}</span>
+                <span className={tx.ok ? "" : "text-red-700 dark:text-red-400"}>
+                  {tx.call}
+                  {tx.ok ? "" : ", reverted"}
+                </span>
+                <a
+                  href={tx.hashscan}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-zinc-500 underline underline-offset-2"
+                >
+                  {tx.hash.slice(0, 12)}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </Fold>
+      </div>
 
       {position.warnings.length > 0 && (
         <details className="border border-amber-600 p-3">

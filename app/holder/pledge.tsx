@@ -110,7 +110,6 @@ export default function PledgeCard({
   escrow,
   lender,
   notes,
-  freeLabel,
   onPledged,
 }: {
   token: { id: string; evm: string; decimals: number };
@@ -119,7 +118,6 @@ export default function PledgeCard({
   lender: Party;
   /** the pledge size chosen above, in whole notes */
   notes: number;
-  freeLabel: string;
   onPledged: () => void;
 }) {
   // configuration is read here rather than on the server, because this is the
@@ -272,6 +270,10 @@ export default function PledgeCard({
 
   // ---------------------------------------------------------------------------
 
+  // the two parameters a holder does not get to choose, stated as facts rather
+  // than as prose. "fixed" is doing the work of a paragraph: it is on the row,
+  // next to the account, where a viewer can read it off the screen and then
+  // check the same field against the token afterwards.
   const fixed = (
     <Rows>
       <Row
@@ -286,10 +288,8 @@ export default function PledgeCard({
             >
               {escrow.id}
             </a>{" "}
-            {escrow.evm}
-            <span className="block text-zinc-500">
-              fixed. the covenant engine, taken from configuration and not from
-              this form.
+            <span className="text-zinc-500">
+              fixed, from configuration. not an input.
             </span>
           </>
         }
@@ -306,41 +306,38 @@ export default function PledgeCard({
             >
               {lender.id}
             </a>{" "}
-            {lender.evm}
-            <span className="block text-zinc-500">
-              fixed. the lender, and the only account the collateral can ever
-              reach. not a field on this page.
+            <span className="text-zinc-500">
+              fixed, the lender. not an input.
             </span>
           </>
-        }
-      />
-      <Row
-        label="amount"
-        value={
-          positive ? (
-            <>
-              {amount} notes, out of {freeLabel} free
-            </>
-          ) : (
-            <span className="text-zinc-500">
-              choose a size above, then this card can build the call
-            </span>
-          )
         }
       />
       <Row
         label="expiry"
         value={
           <>
-            {HOLD_MINUTES_DEFAULT} minutes from the moment you sign
-            <span className="block text-zinc-500">
-              past it the escrow can do nothing at all and you take the notes
-              back with reclaim. a pledge cannot strand them.
+            {HOLD_MINUTES_DEFAULT} minutes{" "}
+            <span className="text-zinc-500">
+              after that you reclaim. a pledge cannot strand the notes.
             </span>
           </>
         }
       />
-      <Row label="signed by" value={`${holder.id} ${holder.evm}, in your wallet`} />
+      <Row
+        label="call"
+        value={
+          positive ? (
+            <>
+              createHoldByPartition, partition 1, {amount} notes{" "}
+              <span className="text-zinc-500">
+                signed by {holder.id} in your wallet. no key is held here.
+              </span>
+            </>
+          ) : (
+            <span className="text-zinc-500">choose a size above</span>
+          )
+        }
+      />
     </Rows>
   );
 
@@ -355,28 +352,26 @@ export default function PledgeCard({
     }
     if (!hasWallet) {
       return (
-        <p className="border border-zinc-300 p-3 text-zinc-500 dark:border-zinc-700">
-          no browser wallet is available in this window, so nothing can be
-          signed here. the position above is read from the chain and needs none.
-          to pledge, open this page in a browser with MetaMask and connect{" "}
-          {holder.id}.
+        <p className="text-zinc-500">
+          no browser wallet in this window, so nothing can be signed here. every
+          figure above is read from the chain and needs none. to pledge, open
+          this page with MetaMask on {holder.id}.
         </p>
       );
     }
     if (liveAccount === null) {
       return (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => void onConnect()}
             disabled={busy !== null}
-            className="w-fit border border-zinc-900 px-3 py-1 disabled:opacity-40 dark:border-zinc-100"
+            className="border-2 border-zinc-900 px-4 py-2 text-base font-semibold disabled:opacity-40 dark:border-zinc-100"
           >
-            {busy === "connect" ? "connecting..." : "connect wallet"}
+            {busy === "connect" ? "connecting" : "connect wallet"}
           </button>
-          <p className="text-zinc-500">
-            connect the note holder {holder.id}. the page is already complete
-            without this; a wallet only adds the ability to act.
-          </p>
+          <span className="text-zinc-500">
+            to sign as {holder.id}. the page is complete without it.
+          </span>
         </div>
       );
     }
@@ -384,51 +379,43 @@ export default function PledgeCard({
       return (
         <div className="flex flex-col gap-2 border-2 border-red-600 p-3">
           <p className="font-semibold text-red-700 dark:text-red-400">
-            this position belongs to {holder.id}, and your wallet is not it.
-          </p>
-          <p>
-            the wallet is on {liveAccount}. the notes above belong to{" "}
-            {holder.id} ({holder.evm}), and only that account can pledge them.
+            wrong account. these notes belong to {holder.id}.
           </p>
           <p className="text-zinc-500">
-            nothing here will build the call from another account. the token
-            holds from whichever account signs and takes no sender parameter, so
-            a signature from the wrong wallet would create a real hold over the
-            wrong party&apos;s notes. switch to {holder.id} to pledge, or keep
-            reading: every figure on this page is public and stays visible.
+            your wallet is on {liveAccount}. the token holds from whichever
+            account signs and takes no sender parameter, so a signature from the
+            wrong wallet would create a real hold over the wrong party&apos;s
+            notes. nothing here will build that call.
           </p>
         </div>
       );
     }
     return (
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={() => void onSign()}
           disabled={busy !== null || !positive || plan === null}
-          className="w-fit border-2 border-zinc-900 px-4 py-2 text-base font-semibold disabled:opacity-40 dark:border-zinc-100"
+          className="border-2 border-zinc-900 px-4 py-2 text-base font-semibold disabled:opacity-40 dark:border-zinc-100"
         >
           {busy === "sign"
-            ? "waiting for the wallet..."
+            ? "waiting for the wallet"
             : positive
               ? `pledge ${amount} notes`
               : "nothing free to pledge"}
         </button>
-        <p className="text-zinc-500">
-          your wallet is on {liveAccount}, which is the note holder. the next
-          click opens MetaMask.
-        </p>
+        <span className="text-zinc-500">
+          {busy === "sign" ? "check MetaMask" : "the next click opens MetaMask"}
+        </span>
       </div>
     );
   };
 
+  // no border and no heading of its own. this is the lower half of the card on
+  // the holder's page, not a card sitting inside another one, and a second
+  // frame around it was what made the action read as one more section rather
+  // than as the thing the page is for.
   return (
-    <div className="flex flex-col gap-3 border-2 border-zinc-900 p-4 dark:border-zinc-100">
-      <h3 className="text-base font-semibold">sign the pledge</h3>
-      <p className="text-zinc-500">
-        createHoldByPartition on partition 1, signed by you. the notes stay in
-        your account and are marked held.
-      </p>
-
+    <div className="flex flex-col gap-4 border-t border-zinc-300 px-5 py-4 dark:border-zinc-700">
       {fixed}
       {action()}
 
@@ -478,9 +465,8 @@ export default function PledgeCard({
           )}
           {done.note && <p className="text-zinc-500">{done.note}</p>}
           <p className="text-zinc-500">
-            what happens next is not yours and there is no button for it here.
-            the escrow releases the hold or executes it to the lender, and this
-            page reads the answer back off the token.
+            what happens next is the escrow&apos;s, and there is no button for
+            it here.
           </p>
         </div>
       )}

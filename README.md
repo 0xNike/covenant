@@ -34,6 +34,45 @@ project. read `PROJECT_BRIEF.md` §4 before assuming more than the paragraph abo
 
 ---
 
+## why this exists
+
+this argument used to open the application's landing page. it is here instead, because a
+judge reads the argument in a README and opens an application to see whether the thing
+works. the app is now the product, the live figures and the three role views; the case for
+it is below.
+
+**the situation.** private credit is roughly 1.7 trillion dollars of loans held outside the
+banking system. a fund lends to a company and sells participations in that loan to pension
+funds and family offices. a participation is a note, and its buyer holds an illiquid claim
+for three years. a note holder who wants cash before maturity does not have to sell at a
+discount: it can pledge the note and borrow against it. the cash lender on the other side
+has to set one number, which is what percentage of the note it will advance.
+
+**what is wrong with it.** that percentage depends on the borrower's financials, and the
+lender has no right to see them. so an agent bank reads the books and announces a number.
+nobody else can check it, and the borrower pays the agent bank. that is the loudest standing
+criticism of the asset class rather than a contrivance for a demonstration: the marks are
+self-reported and unverifiable, and the party producing them is never independent of the
+party being marked.
+
+**what changes.** covenant gives that job to a program, published before the facility is
+struck, so both sides read the test before either side relies on it. the borrower's filing
+goes in. two things come out: whether the covenant passed, and what percentage of the note
+to advance against it. the advance rate is a published function of the borrower's leverage,
+so a lender can work back to that one ratio. that is intended, because leverage is the
+covenant it agreed to and the thing it is lending against. it cannot recover the revenue,
+EBITDA, total debt, cash or interest expense behind that ratio, because one ratio in several
+unknowns fixes none of them. and once the note is pledged, the power to seize it on default
+sits on chain with a named party that is not the agent bank; the token refuses the call from
+anyone else.
+
+**vocabulary, used the same way everywhere in this project.** the *advance rate* is the
+percentage of the note's nominal a lender will lend against. the *haircut* is the rest. they
+are one number stated two ways, and `/`, `/holder` and `/lender` all show the pair rather
+than making a reader translate between them.
+
+---
+
 ## status
 
 **honest, as of 12 sep 2026. this section is updated as gates go green and nothing here is

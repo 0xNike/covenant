@@ -37,16 +37,37 @@ import { usePathname } from "next/navigation";
 // build time, so this is the same variable, read without the blast radius.
 const NETWORK = process.env.NEXT_PUBLIC_NETWORK ?? "network not configured";
 
-// ordered by party, not by build order. the three role views come first because
-// they are what a visitor is for; the console comes last because it is the
-// evidence surface rather than the product. the operator panels moved from / to
-// /console once all signing was finished, so / is now the front door.
-const LINKS: { href: string; label: string }[] = [
+// ---------------------------------------------------------------------------
+// THE LABELS, AND WHY THEY ARE NOT THE ROUTE NAMES
+// ---------------------------------------------------------------------------
+//
+// the bar used to read: covenant, note holder, lender view, engine, console.
+// two of those mean nothing to someone arriving cold. "engine" is our internal
+// word for the service, not a party, and it left a reader asking whose. and
+// "console" describes the furniture rather than the content.
+//
+// so the three role views carry the same three words the landing page uses for
+// the parties, note holder, cash lender and agent, and a reader meets the set
+// twice. "lender view" said view where its siblings said role; the view is what
+// the page is, not who it is for.
+//
+// the routes are unchanged. /engine and /console are referenced throughout the
+// video script, the shot lists and the writeups, and a rename buys nothing a
+// label does not. `label` is what a reader sees, `href` is what everything else
+// already points at.
+//
+// `rule` marks the item as a different kind of thing rather than a fourth
+// party: three parties, a vertical rule, then the surface where the
+// transactions were signed. a divider rather than a dropdown, because five
+// items is not noisy and the three roles are the product. hiding them behind a
+// click costs a tired reader a decision to reach the thing we most want them to
+// open. revisit if this ever passes seven items.
+const LINKS: { href: string; label: string; rule?: boolean }[] = [
   { href: "/", label: "covenant" },
   { href: "/holder", label: "note holder" },
-  { href: "/lender", label: "lender view" },
-  { href: "/engine", label: "engine" },
-  { href: "/console", label: "console" },
+  { href: "/lender", label: "cash lender" },
+  { href: "/engine", label: "agent" },
+  { href: "/console", label: "transactions", rule: true },
 ];
 
 export default function SiteNav() {
@@ -57,24 +78,37 @@ export default function SiteNav() {
       data-site-nav
       className="border-b border-zinc-300 font-mono text-sm dark:border-zinc-700"
     >
+      {/*
+        there is no separate wordmark. there used to be, and next to it the
+        first link also said "covenant", so the bar opened "covenant covenant".
+        one word doing both jobs is less noise and loses nothing: the first item
+        is the brand, and it is the home link, and it takes the filled active
+        state on / like every other item.
+      */}
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-6 py-3">
-        <span className="font-semibold">covenant</span>
         <div className="flex flex-wrap gap-2">
           {LINKS.map((l) => {
             const active =
               l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
             return (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={`border px-3 py-1 ${
-                  active
-                    ? "border-zinc-900 bg-zinc-900 text-zinc-50 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
-                    : "border-zinc-400 dark:border-zinc-600"
-                }`}
-              >
-                {l.label}
-              </Link>
+              <span key={l.href} className="flex items-stretch gap-2">
+                {l.rule && (
+                  <span
+                    aria-hidden
+                    className="my-0.5 w-px self-stretch bg-zinc-300 dark:bg-zinc-700"
+                  />
+                )}
+                <Link
+                  href={l.href}
+                  className={`border px-3 py-1 ${
+                    active
+                      ? "border-zinc-900 bg-zinc-900 text-zinc-50 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                      : "border-zinc-400 dark:border-zinc-600"
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              </span>
             );
           })}
         </div>
