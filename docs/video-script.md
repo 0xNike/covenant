@@ -199,6 +199,16 @@ first time, and nothing about 4b's arrival argues for reordering that.
 > only number it has. the studio declares what a holder is owed. moving the money is a
 > separate step, off chain.
 
+**a protection note, added now that block E has landed and this is no longer the video's
+only candidate for "the" strongest thirty seconds.** section 4 carries the densest narration
+in the script and, unlike sections 3 and 6, has no built-in scroll or long static hold to
+anchor a viewer's attention on one frame — 4b's own panel and the "what we sent, and what the
+token stamped" table are the two shots doing that job here, and they are exactly the two a
+rushed edit would compress first, because neither has a HashScan link forcing a minimum hold.
+if this section has to give up seconds, cut the narration in the block quoted above before
+either of those two holds — 4 seconds on 4b's refusal panel and 6 on the stamped table are the
+floor, not a suggestion.
+
 ## section 5. the confidentiality reveal (2:13-2:43)
 
 **this is iris's section and the most important thirty seconds after the hold execution.**
@@ -262,7 +272,24 @@ than silence.
 pick exactly one of the two lines above based on what `EVIDENCE.md` G5 actually records. never
 say "enclave" without the word "simulation" attached if that is what ran.
 
-## section 6. block E, the collateral hold (2:43/3:13-4:03/4:33, 80 seconds)
+## section 6. block E, the collateral hold (2:43/3:13-4:03/4:33, 80 seconds). **shot.**
+
+recorded and signed on testnet, one continuous take, both mid-recording account switches
+landed clean, no `IsNotEscrow` retake needed. the lifecycle is complete on chain: every
+section of this script from 1 through 6 now has a real transaction behind it, and the
+"fallback: if block E does not land" section at the bottom of this document is superseded —
+kept for the record, not for use.
+
+| step | what | signer | evidence |
+|---|---|---|---|
+| A1 | create hold A | note holder `0.0.10444395` | `0x46c5fbaa4c88d04f53cbdaeb36979a7d8b6c6c2609beef9d3807b28d15cc919d` |
+| A2 | release hold A | engine/escrow `0.0.10445014` | `0x224eb5384684e450039153eeb521bbb39ac9aabe5edc1d34d4a86f5634ed09e0` |
+| B1 | create hold B | note holder `0.0.10444395` | `0xea01d72c1c3f13b06be59b2c2e2219a9ead90e9da61cee56f3fca3d733647800` |
+| B2 | execute hold B | engine/escrow `0.0.10445014` | `0xed43e199b78b21069f6bd0f5536cf2c42b3ad34ddb5d211de69407c32ba490c5` |
+
+final state: note holder 250.00 to 150.00, lender 0 to 100.00, supply unchanged. pending
+argus's independent verification before `EVIDENCE.md` carries these as final — see
+`docs/shot-list-blocks-bce.md` §E for the same caveat.
 
 see `docs/shot-list-blocks-bce.md` §E for the click-by-click. **this is the strongest single
 shot in the video.** two holds: one released, one executed. use the "improved" fixture's
@@ -311,6 +338,16 @@ link, and one line of status.
 > repository. the studio is erc-1400 compliant with partial erc-3643 support. we deploy no
 > contracts. this is covenant.
 
+**optional, zero added seconds: a third link on the card, `/holder`.** `app/holder/page.tsx`
+is a read-only page, no wallet, that reads a real account's position live off testnet,
+including both hold outcomes from section 6 the moment they land. it costs nothing to add as
+a third line of text next to the GitHub and `EVIDENCE.md` links already on this card — no new
+footage, no narration change required. do not give it a dedicated section or cutaway: every
+figure it shows is already proven live, on camera, by hashscan links elsewhere in this video
+(sections 3, 4 and 6), so a section built around it would be evidence the video has already
+presented, told a second time. its value is to a judge after the video, reading the
+repository with no wallet of their own — that is a README pointer, not a shot.
+
 ---
 
 ## things this script must never say
@@ -342,7 +379,13 @@ script is exactly where these slip in under time pressure:
 
 ---
 
-## fallback: if block E does not land
+## fallback: if block E does not land — superseded, block E landed
+
+**this section is dead.** block E landed on testnet, both holds, both outcomes; see section 6
+above for the hashes and `docs/shot-list-blocks-bce.md` §E for the click-by-click. the core
+cut (4:23 / 4:53 with §5A) is the one to edit against. everything below is kept only as the
+record of the plan that was made for the case where it did not land, in case a future retake
+ever needs to know what that plan was.
 
 written now, per hao's instruction, so nothing gets improvised on the day this becomes real.
 

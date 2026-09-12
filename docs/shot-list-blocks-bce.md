@@ -17,10 +17,12 @@ on-screen values.
 **status.** block B: **shot**, see the panel below its heading. block C: **shot**, see the
 panel below its heading — landed with an extra step, 4b, that did not exist when this
 document's block C draft was first written against a console that did not exist yet; see the
-note at the top of that step. block E: console exists (`app/block-e-panel.tsx`), not yet
-filmed. all three share block B's layout — verdict cards at the top of the page, step buttons
-well below the fold — so the scroll choreography below applies throughout; see the notes
-inside each block's section.
+note at the top of that step. block E: **shot** — both holds, both outcomes, signed on
+testnet, see the panel below its heading. the lifecycle is now complete on chain: every block
+this document describes has landed exactly as scripted, including the two mid-recording
+account switches block E required. all three share block B's layout — verdict cards at the
+top of the page, step buttons well below the fold — so the scroll choreography below applies
+throughout; see the notes inside each block's section.
 
 ---
 
@@ -382,9 +384,31 @@ this panel is in frame; it just needs the camera to hold on it.
 
 ---
 
-## block E. the collateral hold. two holds, one released, one executed. **not yet shot.**
+## block E. the collateral hold. two holds, one released, one executed. **shot.**
 
-**screen:** `app/block-e-panel.tsx` now exists and shares the same layout as block B and
+recorded and signed on testnet, one continuous take, both holds, both mid-recording account
+switches executed as scripted. this is the item that closes the project: every flow this
+document promises now has a real transaction behind it.
+
+| step | what | signer | evidence |
+|---|---|---|---|
+| A1 | `createHoldByPartition`, hold A | note holder `0.0.10444395` | `0x46c5fbaa4c88d04f53cbdaeb36979a7d8b6c6c2609beef9d3807b28d15cc919d` |
+| A2 | `releaseHoldByPartition`, hold A | engine/escrow `0.0.10445014` | `0x224eb5384684e450039153eeb521bbb39ac9aabe5edc1d34d4a86f5634ed09e0` |
+| B1 | `createHoldByPartition`, hold B | note holder `0.0.10444395` | `0xea01d72c1c3f13b06be59b2c2e2219a9ead90e9da61cee56f3fca3d733647800` |
+| B2 | `executeHoldByPartition`, hold B | engine/escrow `0.0.10445014` | `0xed43e199b78b21069f6bd0f5536cf2c42b3ad34ddb5d211de69407c32ba490c5` |
+
+**pending confirmation from argus, not yet in `EVIDENCE.md` on that basis** — do not treat
+this table as final on that front, same caveat as block C's table above. this file records
+what iris was told for shot-marking purposes; `EVIDENCE.md` is the file of record.
+
+final state as reported: note holder 250.00 to 150.00, lender 0 to 100.00, supply unchanged.
+step B2 was signed by the engine account `0.0.10445014` — neither the agent `0.0.10424387`
+nor the lender `0.0.10444404` — and the contract would have reverted `IsNotEscrow` for either
+of those. that revert-shaped negative space is not on tape, but the escrow field on hold B and
+the signer of step B2 being the same, uninvolved third account is, and that is the claim this
+block exists to prove.
+
+**screen:** `app/block-e-panel.tsx` shares the same layout as block B and
 block C — two outcome cards ("released" / "executed") pinned at the top of the page, the step
 sections well below them, plus a "prerequisites" panel and a "state read back" panel further
 down still. **the same above-the-fold problem applies here too, scripted below rather than
@@ -485,6 +509,12 @@ HashScan: roughly **25-30 seconds**.
 ---
 
 ## the single riskiest moment across all three blocks, named plainly
+
+**landed clean.** both account switches in block E happened without a wrong-account revert;
+the execute signature came from `0.0.10445014` on the first take. the warning below stays in
+this document unedited because it is still the correct account of why the moment was
+dangerous, and because a retake — a second engine-console pass, a reshoot for a cutaway, or a
+future extension of this block — carries the identical risk on the identical click.
 
 `docs/capture-protocol.md` already flags it in general terms: *"`IsNotEscrow` and similar
 reverts happen because the wrong account was connected."* block E is where this stops being a
