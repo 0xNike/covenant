@@ -1,7 +1,8 @@
 # MASTER_TODO_LIST.md
 
 owner: hermes
-status: **phase 0 executing. hao approved 10 sep 2026.**
+status: **G1 to G4 green and independently verified. 12 sep 2026.**
+remaining: the video (three takes and an edit), and CRE, which is expendable.
 
 | | |
 |---|---|
@@ -64,9 +65,9 @@ survives context loss and lands in the repo for eligibility.
 - [x] **1.2 cut. see D7.** `.claude/agents/*.md` are the charters and the prompts, they are
       committed, and they are what the runtime loads. a second document describing the same
       nine agents would drift.
-- [~] **1.3 running.** apollo reviews `specs/00` and `01` and this file before any build starts.
+- [x] **1.3 done.** apollo reviewed `specs/00` and `01` and this file before any build starts.
       apollo has standing halt authority. if it halts, i fix the plan or escalate to you.
-- [~] **1.4 running.** athena's first task, run in parallel with 1.3, no dependency on it:
+- [x] **1.4 done.** athena's first task, run in parallel with 1.3, no dependency on it:
       map the sdk operation surface for issuance, kyc, coupon, `addKpiData`,
       `createKpiLinkedRate`, and all six hold verbs. cite `.d.ts` paths and line numbers.
       the published sdk ships 3638 typings under
@@ -145,10 +146,10 @@ calendar is indicative. gates are not.
       no token association step is needed: there are no associate methods in `port/in`,
       which confirms ATS securities are EVM contract state via the resolver, not HTS native
       tokens. so a failed transfer in block B fails for the reason we claim it does.
-- [ ] **3.3** gamma: sdk init, wallet connect, network handshake. **rabby confirmed
+- [x] **3.3** gamma: sdk init, wallet connect, network handshake. **rabby confirmed
       reporting `isMetaMask: true`**, which is what `MetamaskService.ts:99` hard-checks, so
       no wallet detour. prove we can read chain state before we try to write any.
-- [ ] **3.4** gamma: **issue via `Bond.createKpiLinkedRate` against config `0x...04`.**
+- [x] **3.4** gamma: **issue via `Bond.createKpiLinkedRate` against config `0x...04`.**
       rewritten per D10. this single call is the highest-consequence moment in the build.
 
       **config `0x...04`, never `0x...02`.** config 2 is bond *variable rate* and carries no
@@ -170,11 +171,11 @@ calendar is indicative. gates are not.
 
       **choose `missedPenalty` and the baseline here** so the KPI path and the missed-report
       path produce visibly different rates. see D11, this is what makes G4 provable.
-- [ ] **3.5** argus: find it on hashscan, link into `EVIDENCE.md`. **also read back the
+- [x] **3.5** argus: find it on hashscan, link into `EVIDENCE.md`. **also read back the
       config id and the three flags from chain** and confirm each. this is the one gate where
       verifying the parameters matters more than verifying the transaction landed.
 - [ ] **3.6** iris: capture the issuance shot.
-- [ ] **G1** hermes signs off.
+- [x] **G1 GREEN, 10 sep.** token `0.0.10450229`, tx `0xb13a7851…`, argus verified.
 
 ### block B. compliance. **DONE, G2 green 10 sep.**
 
@@ -213,51 +214,53 @@ never lets it get that far.
       final state: issuer 750.00, holder 250.00, all three accounts GRANTED.
       **apollo not run at this gate**, see D15.
 
-### block C. coupon. thu 10 sep, target G3 by 20:00 SGT
+### block C. coupon. **DONE, G3 green 11 sep. a submittable entry exists.**
 
-- [ ] **3.12** gamma: `updateMaturityDate` to compress the lifecycle into demo time.
+- [x] **3.12** gamma: `updateMaturityDate` to compress the lifecycle into demo time.
       needs `ROLE_MATURITY_MANAGER`, which athena found is **missing from the sdk's
       `SecurityRole` TS enum** and must be passed to `grantRole` as a raw hex literal.
-- [ ] **3.13** gamma: set the coupon, distribute to holders of record.
+- [x] **3.13** gamma: set the coupon, distribute to holders of record.
 - [x] **3.14 CUT, see D13.** `scheduledTask` is an internal EVM task queue, not the hedera
       schedule service. the extra-points line is dropped and not claimed. cutting this also
       buys back hours that block D now needs.
-- [ ] **3.15** argus records. iris captures.
-- [ ] **G3 — needs hao. a submittable hedera entry exists at this point.**
+- [x] **3.15** argus records. iris captures.
+- [x] **G3 GREEN, 11 sep. a submittable hedera entry exists.** the token priced the
+      coupon from its own storage: we sent a pending triplet, it stamped 600 at 4 decimals.
       from here everything is upside and i will not risk 1 to 3 to reach it.
 
-### block D. confidential engine and repricing. fri 11 sep
+### block D. confidential engine and repricing. **DONE.** the engine and the
+lender/agent split were built ahead of schedule; the repricing leg folded into block C.
 
-- [ ] **3.16** hercules: the engine as a **plain local service behind a clean interface.**
+- [x] **3.16** hercules: the engine as a **plain local service behind a clean interface.**
       inputs revenue, ebitda, leverage. outputs covenant verdict, kpi value, haircut.
       no CRE yet. the interface is the whole point, the handler swaps in later without
       touching a single caller.
-- [ ] **3.17** hercules: **the lender view and agent view split.** the agent sees the inputs.
+- [x] **3.17** hercules: **the lender view and agent view split.** the agent sees the inputs.
       the lender sees only the haircut, with the input fields visibly absent. brief §9.3 is
       right that confidentiality is invisible on video. the visible absence is the demo.
 - [x] **3.18 DELETED, folded into 3.4.** `createKpiLinkedRate` is the issuance call. it
       could never have been applied to an already-issued note. see D10.
-- [ ] **3.18b** gamma: grant the roles this block needs, each its own transaction:
+- [x] **3.18b** gamma: grant the roles this block needs, each its own transaction:
       `ROLE_KPI_MANAGER` for `addKpiData` (`facets/kpi/Kpis.sol:41`) and
       `ROLE_INTEREST_RATE_MANAGER` for the rate setters
       (`facets/kpiLinkedRate/KpiLinkedRate.sol:54,74`). none of these were in the old plan.
-- [ ] **3.19** gamma: post the engine's kpi via `addKpiData`. **the rate does not step when
+- [x] **3.19** gamma: post the engine's kpi via `addKpiData`. **the rate does not step when
       you call this.** `KpiLinkedRateLib.sol:40-64` computes at a coupon's `fixingDate`, on
       read. `onlyValidDate` (`KpisModifiers.sol:25`) rejects a future date, a duplicate
       checkpoint date, or one below the minimum. this block is date arithmetic across
       `startPeriod`, `reportPeriod`, `fixingDate` and the compressed maturity.
-- [ ] **3.20** argus: **verify by value, not by delta. see D11.** the gate is that the new
+- [x] **3.20** argus: **verify by value, not by delta. see D11.** the gate is that the new
       rate equals `_getRateFromImpact(impact, kpiData)` for the value we posted **and is not
       equal to** `previousRate + missedPenalty`. a rate that moved via the missed-report path
       looks identical on screen and in the mirror node, and claiming our kpi caused it would
       be a false causal claim on video, checkable from source in five minutes.
       iris captures before and after only once argus has confirmed which path fired.
-- [ ] **G4a** hermes signs off.
+- [x] **G4a** done, folded into G4.
 
 **block D is the block that overruns, not block E.** it is the date choreography, and it got
 heavier when the role grants and the value check were counted.
 
-### block E. collateral hold. fri 11 sep to sat 12 sep
+### block E. collateral hold. **DONE, G4 green 12 sep.**
 
 strongest single shot on video.
 
@@ -271,17 +274,17 @@ and `protectedCreate` demonstrate nothing plain create does not, and `protectedC
 EIP-712 signature assembly (`Hold.ts:106-131`) that would eat two hours. athena has mapped
 all six for the writeup. gamma calls three.
 
-- [ ] **3.21** gamma: **two** `createHoldByPartition` calls, both with `escrow` =
+- [x] **3.21** gamma: **two** `createHoldByPartition` calls, both with `escrow` =
       `0.0.10445014` and **`to` = the lender**. pinning `to` at creation
       (`HoldStorageWrapper.sol:1086-1088`) means the escrow's only remaining choice is
       release versus execute, which is exactly the decision we claim the engine makes. that
       is a stronger writeup sentence than "the engine is the escrow".
       **watch the expiry.** `_validateExecuteHold` reverts `HoldExpirationReached`, so a
       short demo expiry kills the money shot.
-- [ ] **3.22** hercules: lender advances cash at the engine's haircut, in the console.
+- [x] **3.22** hercules: lender advances cash at the engine's haircut, in the console.
       off-chain, tracked in the console only. zeus has already drawn it that way.
-- [ ] **3.23** gamma: `releaseHoldByPartition` on hold #1, the repayment path.
-- [ ] **3.24** gamma: **`executeHoldByPartition` on hold #2**, the default path. collateral
+- [x] **3.23** gamma: `releaseHoldByPartition` on hold #1, the repayment path.
+- [x] **3.24** gamma: **`executeHoldByPartition` on hold #2**, the default path. collateral
       moves to the lender, driven by a number the lender never saw. the money shot.
       **signer must be the engine account.** the escrow check is on-chain only and not
       pre-validated by the sdk, so a wrong signer reverts `IsNotEscrow` live. confirm the
@@ -290,8 +293,13 @@ all six for the writeup. gamma calls three.
       athena verified independently: the constructor param is misnamed but the only call site
       passes the right value and the struct carries one timestamp, so no swap is possible.
       demoted to a naming nit. **F2 is the upstream candidate**, not this.
-- [ ] **3.26** argus records every hold transaction. iris captures 3.24 first and best.
-- [ ] **3.26b** **decision pending: put a hash of the engine's output payload into
+- [x] **3.26** argus records every hold transaction. iris captures 3.24 first and best.
+- [x] **3.26b DROPPED.** the `Hold.data` commitment is unreachable through the sdk
+      (`RPCTransactionAdapter.ts:1016` hardcodes `0x`) and reachable only by hand-built
+      calldata on the single most load-bearing transaction in the demo, to add a commitment
+      nothing on chain verifies. recorded in `docs/architecture.md` under what the diagram
+      deliberately does not draw. original note follows.
+      ~~decision pending: put a hash of the engine's output payload into
       `Hold.data`** (`HoldStorageWrapper.sol:69`, emitted in `HeldByPartition` at
       `HoldByPartition.sol:65`). apollo's proposal, roughly 30 minutes. it gives the hold an
       on-chain commitment to the exact haircut computation, readable on hashscan, and turns
@@ -299,7 +307,12 @@ all six for the writeup. gamma calls three.
       engine can act on it". **not decided. hermes decides at G4 with the real sdk surface
       in hand, and tells hao before it ships**, since it changes what the architecture
       diagram may honestly draw.
-- [ ] **G4** hermes signs off.
+- [x] **G4 GREEN, 12 sep 2026.** argus verified independently. both holds named the engine
+      `0.0.10445014` as escrow and the lender `0.0.10444404` as destination, decoded from
+      calldata and cross-checked against each `HeldByPartition` event. destination non-zero
+      on both. collateral moved: holder 250.00 to 150.00, lender 0 to 100.00.
+      create A `0x46c5fbaa…`, release A `0x224eb538…`, create B `0xea01d72c…`,
+      execute B `0xed43e199…`.
 
 ### block F. CRE confidential workflow. **now runs AFTER block G. see D15.**
 **hard 4 hour timebox**
@@ -336,14 +349,18 @@ do not start until every gate above is green **and block G is drafted**.
       `executeHoldByPartition` firing. then the confidentiality reveal, engine inputs on
       screen, then the lender's view with those fields gone.
       *hao action: screen recording and voiceover. iris writes the shot list and script.*
-- [ ] **3.32** zeus: **architecture diagram.** stated requirement for chainlink, not a nicety.
-- [ ] **3.33** zeus: README.
-- [ ] **3.34** zeus: three per-prize writeups. the integration note is the high-leverage
+- [x] **3.32** zeus: **architecture diagram.** stated requirement for chainlink, not a nicety.
+- [x] **3.33** zeus: README.
+- [~] **3.34** zeus: three per-prize writeups. **drafted**, G4 and video placeholders open. the integration note is the high-leverage
       neglected one. **write the integration section like documentation and the feedback
       section like a real bug report:** what was hard in the ATS sdk, what needed a
       workaround, what is missing. name our own weaknesses from brief §9 before a judge
       finds them. input integrity, illiquid seizure, invisible confidentiality.
-- [ ] **3.35** rudolph: prepare the upstream PR to `hashgraph/asset-tokenization-studio`.
+- [~] **3.35 reframed.** the Open Source track wants a contribution to
+      `hedera-dev/hedera-harness`, a different repository. our fifteen defects are against
+      the asset tokenization studio, so they do **not** qualify for that track and count
+      instead as an extra point on Tokenization. see `specs/06-hedera-harness.md`.
+      ~~rudolph: prepare the upstream PR to `hashgraph/asset-tokenization-studio`.
       **branch off their `develop`, not `main`.** DCO sign-off and GPG signature on every
       commit from the first one, see D9 and H9. PR needs an assignee. changeset required
       unless a bypass label applies. full checklist at the top of

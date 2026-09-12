@@ -31,28 +31,31 @@ project. read `PROJECT_BRIEF.md` §4 before assuming more than the paragraph abo
 
 ## status
 
-**honest, as of 11 sep 2026. this section is updated as gates go green and nothing here is
+**honest, as of 12 sep 2026. this section is updated as gates go green and nothing here is
 written ahead of the evidence.** the table below mirrors `EVIDENCE.md` gate by gate. update
 it there first, then here, never the other way round.
 
-**G1 through G3 are green. a complete, submittable hedera entry exists.** a bond is issued, a
-transfer is blocked by KYC then granted then permitted, and a coupon is set, snapshotted and
-its entitlements read, all independently re-verified by argus against the mirror node and the
-testnet json-rpc relay, not against this project's own console or transcript. the application
-code in `app/` covers issuance (`app/issue-panel.tsx`) and the confidential engine split
-(`app/engine/`, `app/lender/`), which is what produced everything below. kpi posting and the
-collateral hold (G4) are not built yet, and the CRE leg (G5) has not been attempted.
+**G1 through G4 are green. a complete, submittable hedera entry exists, and it now includes
+the collateral hold.** a bond is issued, a transfer is blocked by KYC then granted then
+permitted, a coupon is set, snapshotted and its entitlements read, and a collateral hold was
+created, released and created again to be executed on default, all independently re-verified
+by argus against the mirror node and the testnet json-rpc relay, not against this project's
+own console or transcript. the application code in `app/` covers the landing page organised
+by party (`app/page.tsx`), the role-shaped views (`app/holder/`, `app/lender/`, `app/engine/`)
+and the transaction-level operator console at `/console` (`app/console/`), which is what
+produced every gate below. kpi posting is not built and is not claimed, see the G1 naming
+caveat. the CRE leg (G5) has not been attempted.
 
 | gate | proves | status |
 |---|---|---|
 | G1 | bond issued on Hedera testnet, visible on HashScan | **VERIFIED** |
 | G2 | transfer blocked by KYC, grant issued, same transfer succeeds | **VERIFIED** |
 | G3 | coupon distributed to holders of record. **first submittable entry** | **VERIFIED** |
-| G4 | `setCouponRateType(FIXED)` set, engine's rate posted by role-gated `setRate` and stamped into a coupon by the token, hold created and executed | not started |
+| G4 | `setCouponRateType(FIXED)` set, engine's rate posted by role-gated `setRate` and stamped into a coupon by the token, hold created, released, created again and executed on default | **VERIFIED** |
 | G5 | confidential engine running behind a CRE `handlerInTee`, or an honestly-labelled CRE CLI simulation | not started |
 | G6 | video, README, three per-prize writeups, evidence, upstream PR prepared | not started |
 
-G1 through G3 together are a complete submission. G4 and G5 are upside, not a shortfall.
+G1 through G4 together are a complete submission. G5 is upside, not a shortfall.
 
 ### G1, in full
 
@@ -194,18 +197,72 @@ switching rate type after a coupon exists is safe; we did not test that path.
    the name describes the instrument covenant models, not a claim about what facet runs on this
    token.
 
+### G4, in full
+
+status **VERIFIED**. this is the project's central claim and it holds: two holds, same token,
+same escrow, resolved in opposite directions, decoded from calldata and event logs, not from
+source or from transcript. token `0.0.10450229` unchanged since G1 through G3. full method and
+every check: `EVIDENCE.md` G4.
+
+| step | transaction | signer | result |
+|---|---|---|---|
+| `createHoldByPartition` (hold A, 100.00 notes) | [`0x46c5fbaa…`](https://hashscan.io/testnet/transaction/0x46c5fbaa4c88d04f53cbdaeb36979a7d8b6c6c2609beef9d3807b28d15cc919d) | `0.0.10444395` (holder) | `SUCCESS` |
+| `releaseHoldByPartition` (hold A) | [`0x224eb538…`](https://hashscan.io/testnet/transaction/0x224eb5384684e450039153eeb521bbb39ac9aabe5edc1d34d4a86f5634ed09e0) | `0.0.10445014` (engine) | `SUCCESS` |
+| `createHoldByPartition` (hold B, 100.00 notes) | [`0xea01d72c…`](https://hashscan.io/testnet/transaction/0xea01d72c1c3f13b06be59b2c2e2219a9ead90e9da61cee56f3fca3d733647800) | `0.0.10444395` (holder) | `SUCCESS` |
+| `executeHoldByPartition` (hold B, default) | [`0xed43e199…`](https://hashscan.io/testnet/transaction/0xed43e199b78b21069f6bd0f5536cf2c42b3ad34ddb5d211de69407c32ba490c5) | `0.0.10445014` (engine) | `SUCCESS` |
+
+**what this gate is not.** `PROJECT_BRIEF.md` §11 item 4, `addKpiData` and the on-chain rate
+step, is not part of this gate. it was already established as unreachable on this token (G1's
+naming caveat), and the rate leg that is real on this token was signed and verified under G3,
+before the first coupon. nothing in the four transactions above touches the rate. this gate's
+chain evidence is the hold lifecycle only.
+
+**the load-bearing question: escrow and destination, for both holds, decoded from chain data,
+not from source.** both `createHoldByPartition` calls decode, from calldata, to the identical
+tuple `(amount, expirationTimestamp, escrow, to, data)` with `escrow = 0.0.10445014` (the
+engine) and `to = 0.0.10444404` (the lender), on both holds. the `HeldByPartition` event each
+create transaction emits agrees independently: same escrow, same destination, on both. **`to`
+is non-zero on both**, which matters specifically: `HoldStorageWrapper.sol:1086-1088` skips the
+destination check entirely when `hold.to == address(0)`, which would have let the escrow send
+the collateral anywhere. it did not apply here. the destination was pinned to the lender at
+creation, on both holds, checked from the calldata itself, not read back from a field we wrote.
+
+**the strongest form of the argument.** `isEscrow(hold, addr)` is a plain equality, called from
+the one path both release and execute route through, and it reverts `IsNotEscrow()`
+unconditionally for any caller that is not the recorded escrow. neither `executeHoldByPartition`
+nor `releaseHoldByPartition` carries any admin or role modifier of its own. so the fact that
+both transactions above, signed by `0.0.10445014`, landed as `SUCCESS` is itself proof of who
+the enforced escrow was: had the check been keyed to any other address, both would have
+reverted regardless of what the console displayed. that is stronger evidence than a field read
+back from state, because it is the contract's own gate having already been satisfied.
+
+**the collateral actually moved.** decoded from `TransferByPartition` events, not inferred: the
+100.00 notes leave the holder's transferable balance at hold B's creation and land in the
+lender's balance at hold B's execution. live balances confirm the same movement: the holder
+fell from 250.00 (established under G2/G3) to 150.00, the lender rose from 0 to 100.00, and
+`totalSupply()` stayed at 1000.00 throughout. hold A's 100.00 came back to the holder on
+release and is included in that net, not lost anywhere.
+
+**cost, and who paid.** this gate was paid entirely by the holder and the engine, neither of
+which is the issuer: the holder signed both creates (1.28926268 HBAR), the engine signed the
+release and the execute (1.08615491 HBAR). running total across G1 through G4, across three
+distinct accounts, is **18.29866232 HBAR**.
+
 ---
 
 ## what runs today
 
 this repository is a next.js 16 / react 19 app with the ATS sdk (`@hashgraph/asset-tokenization-sdk@8.0.0`)
-as an npm dependency. `npm run dev` serves an issuance console (`app/issue-panel.tsx`, which
-issued the token verified in G1), a compliance panel (`app/block-b-panel.tsx`, G2) and a coupon
-panel (`app/block-c-panel.tsx`, G3), plus the confidential engine split, `app/engine/` and
-`app/lender/`. a collateral-hold panel (`app/block-e-panel.tsx`) exists in the codebase but is
-not yet signed against the live token; kpi posting is not built. the instructions below are for
-running what exists, and will describe more as the build order in `MASTER_TODO_LIST.md` moves
-through its gates.
+as an npm dependency. `npm run dev` serves a landing page organised by party (`app/page.tsx`),
+three role-shaped views, the note holder's position (`app/holder/`), the lender's narrowed view
+(`app/lender/`) and the agent's confidential engine console (`app/engine/`), and the
+transaction-level operator console at `/console` (`app/console/`). the operator console holds
+four panels in ship order: issuance (`app/console/issue-panel.tsx`, G1), compliance
+(`app/console/block-b-panel.tsx`, G2), rate and coupon (`app/console/block-c-panel.tsx`, G3) and
+the collateral hold (`app/console/block-e-panel.tsx`, G4). every gate in `EVIDENCE.md` was
+signed through one of these four panels. kpi posting is not built and is not claimed, see the
+G1 naming caveat. the instructions below are for running what exists, and will describe more as
+the build order in `MASTER_TODO_LIST.md` moves through its gates.
 
 ```
 node   >= 20.19.4

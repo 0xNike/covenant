@@ -6,11 +6,12 @@ writeups, on a hard four-hour timebox, precisely so it can fail without taking a
 down with it. if you are reading this and `EVIDENCE.md` G5 still says "not started," we did not
 pursue this prize, and nothing above this line in the submission changes as a result.
 
-**status at time of writing, 11 sep 2026.** the timebox has not opened. hedera tokenization gates
-G1 through G3 are verified (issuance, the compliance gate, the coupon), so a complete,
-submittable hedera entry exists independent of this prize. what is true today for this leg
-specifically is everything below "what is built today." everything under "what the timebox
-targets" is a plan, not a claim.
+**status at time of writing, 12 sep 2026.** the timebox has not opened. hedera tokenization
+gates G1 through G4 are verified (issuance, the compliance gate, the coupon, and the
+collateral hold released and executed), so a complete, submittable hedera entry exists
+independent of this prize, and is unaffected by whatever happens below. what is true today for
+this leg specifically is everything below "what is built today." everything under "what the
+timebox targets" is a plan, not a claim.
 
 ---
 

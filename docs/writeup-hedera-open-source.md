@@ -1,10 +1,30 @@
 # hedera, improve the hedera harness
 
-**prize:** hedera, improve the hedera harness ($2,000, 2 slots). optional third slot, taken
-only because a genuine friction point emerged from our own build. we did not go looking for
-one.
+**this document targets a prize we do not qualify for. read this note before the rest.** we
+built against the hedera asset tokenization studio (ATS) and, in the course of a working
+submission, found fifteen defects in its sdk and contracts, filed in `BUG.md`. on reading the
+"improve the hedera harness" prize text closely, the contribution it asks for is to
+`hedera-dev/hedera-harness`, an agentic testing cli for a different starter project entirely,
+a separate repository at a different layer of the stack from ATS. `specs/06-hedera-harness.md`
+checks this directly: none of our fifteen findings, and none of our own first-hour friction,
+reproduce anywhere in `hedera-harness`'s source, tests, or its default target project,
+`scaffold-hbar`. the findings below are real. the track named in this document's title is the
+wrong one for them.
+
+**what we do with them instead.** the fifteen defects are claimed as the "contributions back
+upstream to ATS" extra-points line on the hedera tokenization writeup
+(`docs/writeup-hedera-tokenization.md`), not as an entry in this track. the upstream pull
+request to `hashgraph/asset-tokenization-studio` is still worth opening on its own merits,
+independent of which prize, if any, it counts toward. this document is kept, not deleted,
+because the findings are the useful part and a reader should be able to see exactly where they
+were meant to land and where we discovered they actually belong.
+
+---
+
+**prize:** hedera, improve the hedera harness ($2,000, 2 slots). not entered, per the note
+above.
 **repository:** https://github.com/0xNike/covenant
-**full defect log:** [`BUG.md`](../BUG.md), fourteen entries, `B1` through `B14`, plus two
+**full defect log:** [`BUG.md`](../BUG.md), fifteen entries, `B1` through `B15`, plus two
 investigated and withdrawn, `W1` and `W2`. this document is a curated, prioritised reading of
 that file for a judge with limited time; `BUG.md` has the full reasoning, every file and line
 cited, and the reproductions.
@@ -119,10 +139,13 @@ the sdk, and read the hold id off the event log.
 
 ---
 
-## unusable outside a bundler
+## module resolution, in both directions
 
-two defects that never surface in the sdk's own reference app, because that app is built with
-vite, and surface immediately for anyone who is not.
+three defects, none of which surface in the sdk's own reference app, because that app is built
+with vite. two fail for anyone building without a bundler; the third fails specifically for an
+app on a modern bundler-resolution setup, the opposite direction, same underlying cause: the
+package was built and tested against one consumer and ships broken for every other shape of
+consumer.
 
 **B2. the sdk cannot be loaded in any browser bundler without hand-written shims.** one entry
 point serves both node and browser. it pulls `winston`, which needs `fs`, via
@@ -139,6 +162,21 @@ node's esm resolver rejects extensionless specifiers; bundlers tolerate them, so
 invisible to anyone using webpack, vite or turbopack and fatal to anyone importing the package
 directly in node. suggested fix: one line of tsconfig, or a `tsc-alias` step, to emit explicit
 `.js` extensions.
+
+**B15. the typechain package's ethers types are unusable from a bundler-resolution app.**
+`@hashgraph/asset-tokenization-contracts` declares `"type": "commonjs"`, so its generated
+typechain declarations resolve `ethers` to `node_modules/ethers/lib.commonjs`. an app on
+`"moduleResolution": "bundler"`, the next.js default and ours, resolves the same `ethers` to
+`lib.esm`. ethers ships a separate declaration set per build, and both declare classes carrying
+private fields, so the two `Network` types are nominally incompatible even though they are the
+same class at runtime: `IAsset__factory.connect(address, signer)` fails to typecheck against a
+`JsonRpcSigner` that is the correct runtime object, and no cast at the call site fixes it
+cleanly, because the mismatch is in a transitive type. the typed factories, the entire reason
+to depend on this package rather than a plain ABI, are unreachable from any app using bundler
+resolution. our workaround, in `lib/ats/coupon.ts` and `lib/ats/collateral.ts`, both documented
+inline: take `IAsset__factory.abi` and hand it to a plain `ethers.Contract`, which keeps the
+correct ABI and discards the generated types. suggested fix: publish dual declarations, or add
+an `exports` map with a `types` condition per resolution mode.
 
 ---
 
@@ -261,5 +299,5 @@ a coupon, a collateral hold, against a real hedera testnet deployment, using the
 documented. B1 is the one that reshaped the project, see the tokenization writeup for what we
 built once the kpi-linked path turned out to be dead, and it is the one worth a judge's full
 attention if only one is read. the rest are proportionate to their severity, not to how many
-words it takes to describe them: fourteen entries earns grouping, not fourteen equal-weight
+words it takes to describe them: fifteen entries earns grouping, not fifteen equal-weight
 paragraphs.

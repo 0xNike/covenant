@@ -6,10 +6,10 @@
 line there. where a line is not yet filled, this document says so with a placeholder, not with
 a claim.
 
-**status at time of writing, 11 sep 2026.** three gates are verified on chain: issuance, the
-compliance gate, and the coupon. a complete, submittable hedera entry exists. the fourth,
-KPI posting and the collateral hold, is not yet built. this document is written to be updated
-as further signatures land, not rewritten. see the gate table below.
+**status at time of writing, 12 sep 2026.** four gates are verified on chain: issuance, the
+compliance gate, the coupon, and the collateral hold. a complete, submittable hedera entry
+exists. this document is written to be updated as further signatures land, not rewritten. see
+the gate table below.
 
 ---
 
@@ -27,9 +27,9 @@ tokenization studio (ATS), against the pre-deployed resolver `0.0.9212226` and f
 
 | gate | requirement | status | evidence |
 |---|---|---|---|
-| 1 | ATS used to issue and manage a tokenised asset | issuance, the compliance gate and the coupon are verified on chain; the collateral hold is not yet built | issuance, G2 and G3: see below. hold: `[G4 tx: pending]` |
-| 2 | deployed and demonstrated on hedera testnet | issuance, the compliance gate and the coupon are demonstrated on hedera testnet; the collateral hold is demonstrated once G4 turns green | see gate table |
-| 3 | public github repository, contracts verified on hashscan where applicable | repository is public at the link above. we deploy no contracts, so there is nothing to verify on hashscan in that sense; instead we show the token deployment and every lifecycle transaction directly on hashscan | `[repository visibility confirmed: pending]` |
+| 1 | ATS used to issue and manage a tokenised asset | issuance, the compliance gate, the coupon and the collateral hold are all verified on chain | issuance, G2, G3 and G4: see below |
+| 2 | deployed and demonstrated on hedera testnet | issuance, the compliance gate, the coupon and the collateral hold are all demonstrated on hedera testnet | see gate table |
+| 3 | public github repository, contracts verified on hashscan where applicable | repository confirmed public at the link above (`private: false`, checked via the GitHub API). we deploy no contracts, so there is nothing to verify on hashscan in that sense; instead we show the token deployment and every lifecycle transaction directly on hashscan | confirmed |
 | 4 | demo video, five minutes or less, showing issuance, configuration and at least one lifecycle operation | scripted in `docs/video-script.md`, not yet cut | `[video link: pending]` |
 
 ### issuance, verified
@@ -104,8 +104,49 @@ token refused the caller's rate and priced the coupon from a storage slot `Fixed
 had written 33 seconds earlier, through a separately role-gated call. this is examined in full
 under "the rate leg, precisely" below.
 
-**gates 1 through 3 together are a complete, submittable hedera entry.** the collateral hold,
-G4, is upside, not a requirement we are short of. see `specs/00-mission.md`'s ship order.
+### G4, the collateral hold, verified
+
+two holds, same token, same escrow, resolved in opposite directions: one released on
+repayment, the next created and executed on default. four transactions, signed by the holder
+(both creates) and the engine (the release and the execute), none by the issuer. token
+`0.0.10450229` unchanged since G1 through G3. full method and every check: `EVIDENCE.md` G4.
+
+| step | transaction | signer | result |
+|---|---|---|---|
+| `createHoldByPartition` (hold A, 100.00 notes) | [`0x46c5fbaa…`](https://hashscan.io/testnet/transaction/0x46c5fbaa4c88d04f53cbdaeb36979a7d8b6c6c2609beef9d3807b28d15cc919d) | `0.0.10444395` (holder) | `SUCCESS` |
+| `releaseHoldByPartition` (hold A, repaid) | [`0x224eb538…`](https://hashscan.io/testnet/transaction/0x224eb5384684e450039153eeb521bbb39ac9aabe5edc1d34d4a86f5634ed09e0) | `0.0.10445014` (engine) | `SUCCESS` |
+| `createHoldByPartition` (hold B, 100.00 notes) | [`0xea01d72c…`](https://hashscan.io/testnet/transaction/0xea01d72c1c3f13b06be59b2c2e2219a9ead90e9da61cee56f3fca3d733647800) | `0.0.10444395` (holder) | `SUCCESS` |
+| `executeHoldByPartition` (hold B, default) | [`0xed43e199…`](https://hashscan.io/testnet/transaction/0xed43e199b78b21069f6bd0f5536cf2c42b3ad34ddb5d211de69407c32ba490c5) | `0.0.10445014` (engine) | `SUCCESS` |
+
+**tri-party, not "a third party can move your assets."** both `createHoldByPartition` calls
+decode from calldata to `escrow = 0.0.10445014` (the engine) and `to = 0.0.10444404` (the
+lender), cross-checked against each transaction's own `HeldByPartition` event, which agrees
+independently. `to` is non-zero on both, so the zero-address bypass at
+`HoldStorageWrapper.sol:1086-1088`, which skips the destination check entirely when
+`hold.to == address(0)`, never applied. the destination was pinned to the lender at creation,
+on both holds, checked from the calldata itself, not read back from a field the application
+wrote.
+
+**the strongest form of the argument is that the transactions landed at all.** `isEscrow(hold,
+addr)` is a plain equality, reached from the one path both release and execute route through,
+and it reverts `IsNotEscrow()` unconditionally for any caller that is not the recorded escrow.
+neither `executeHoldByPartition` nor `releaseHoldByPartition` carries any admin or role
+modifier. so `0.0.10445014` signing both the release and the execute, and both returning
+`SUCCESS`, is itself proof of who the enforced escrow was: had the check been keyed to any
+other address, both would have reverted regardless of what the console displayed. that is
+stronger evidence than a field read back from state, because it is the contract's own gate
+having already been satisfied, not a value we are trusting it to report honestly afterward.
+
+**the collateral moved.** decoded from `TransferByPartition` events: the holder's balance fell
+from 250.00 to 150.00, the lender's rose from 0 to 100.00, and `totalSupply()` held at 1000.00
+throughout. hold A's 100.00 came back to the holder on release and is included in that net.
+
+**paid by the holder and the engine, not the issuer.** the holder signed both creates
+(1.28926268 HBAR), the engine signed the release and the execute (1.08615491 HBAR). running
+total across G1 through G4, across three distinct accounts, is 18.29866232 HBAR.
+
+**gates 1 through 4 together are a complete, submittable hedera entry.** see
+`specs/00-mission.md`'s ship order.
 
 ---
 
@@ -157,12 +198,21 @@ chainlink writeup. the engine's output reaches the token as described in "the ra
 
 ### contributions upstream to ATS
 
-`BUG.md` B1: the KPI-linked bond configuration, `0x...04`, is registered in the deployed
-resolver and cannot be deployed against by any path. this is verified against the live
-resolver with `getFacetIdByConfigurationIdVersionAndSelector`, not inferred from source alone
-, see `EVIDENCE.md` G1 item 6 and the open-source writeup for the full account. the upstream
-pull request is prepared and has not been opened, per this project's own rule that opening it
-needs approval outside this document's scope. `[upstream PR: pending]`.
+building this submission against `@hashgraph/asset-tokenization-sdk@8.0.0` surfaced fifteen
+defects, filed as `BUG.md` `B1` through `B15`, plus two investigated and withdrawn. every one
+was hit by building a working flow, not by auditing the sdk for faults. the one that reshaped
+this project is `B1`: the kpi-linked bond configuration, `0x...04`, is registered in the
+deployed resolver and cannot be deployed against by any path, verified live with
+`getFacetIdByConfigurationIdVersionAndSelector`, not inferred from source alone. see
+`EVIDENCE.md` G1 item 6 and `docs/writeup-hedera-open-source.md` for the full log and why that
+document, despite its name, targets a different prize than the one this claim sits under.
+these are claimed here, as contributions back upstream to ATS, not under the hedera open
+source track: that track's own text asks for a contribution to `hedera-dev/hedera-harness`, a
+separate repository at a different layer of the stack, which none of our findings touch (see
+`specs/06-hedera-harness.md`). the upstream pull request to
+`hashgraph/asset-tokenization-studio` is prepared and has not been opened, per this project's
+own rule that opening it needs approval outside this document's scope. `[upstream PR:
+pending]`.
 
 ### the two we did not target, and why
 
@@ -342,9 +392,10 @@ per "the confidentiality claim" above.
   them onto the chain. nothing on hedera verifies that the published computation is what ran.
   see `docs/architecture.md` for exactly where that boundary sits.
 - the coupon settlement is a plain HBAR transfer signed by the agent, not an ATS operation, and
-  the lender's cash advance (once G4 lands) will be the same shape. `setCoupon` records terms
-  on chain and makes the entitlement readable; moving money against that entitlement is not
-  itself an ATS transaction.
+  the lender's cash advance is the same shape: it is not modelled as an on-chain transaction in
+  this build. `setCoupon` records terms on chain and makes the entitlement readable; the
+  collateral hold moves the note itself, not cash; moving money against either is not itself an
+  ATS transaction.
 
 full account in [`README.md`](../README.md) §"what is real and what is not", which this
 document does not repeat beyond what is specific to this prize's gates.
@@ -353,12 +404,9 @@ document does not repeat beyond what is specific to this prize's gates.
 
 ## what to fill in before this document is final
 
-G2 and G3 are filled in above, with hashscan links, and no longer placeholders. what remains:
+G2, G3 and G4 are filled in above, with hashscan links, and no longer placeholders. repository
+visibility is confirmed public. what remains:
 
-- `[G4 tx: pending]`, `FixedRate.setRate`, `createHoldByPartition` (two instruments),
-  `releaseHoldByPartition`, `executeHoldByPartition`.
-- `[repository visibility confirmed: pending]`, confirm the repository is public before
-  submission.
 - `[video link: pending]`, the cut video, under five minutes.
 - `[upstream PR: pending]`, the hashgraph/asset-tokenization-studio pull request, once opened.
 
