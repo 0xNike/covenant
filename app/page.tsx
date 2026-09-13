@@ -11,9 +11,19 @@
 // that is not the note holder, and the page used to open in the second person,
 // "you own a slice of a loan", which seated the reader as the holder. a reader
 // in the wrong chair does not translate, they leave. so nothing above the role
-// cards says "you", the opening states the whole product in one sentence in the
-// third person, and the parties are named: the fund, the note holder, the cash
-// lender, the agent bank.
+// cards says "you", the opening leads with the analogy that makes a cold reader
+// feel the problem before naming any party, and the parties are named after it:
+// the fund, the note holder, the cash lender.
+//
+// the opening used to open on "an agent bank reads the books and announces what
+// the slice is worth", cited as the market's actual complaint. it was not: two
+// Mayer Brown primary sources say an administrative agent has no valuation role
+// and no duty of disclosure beyond what the credit agreement names, and the
+// financing lender's own credit process sets the advance rate, pre-negotiated.
+// see `specs/07-market-premise.md`. the real, sourced problem is narrower and
+// stronger: the fund holding the loans marks them itself, and the FSB's own
+// May 2026 report on private credit names exactly that as a documented source
+// of dispersion across managers. the opening leads with that now.
 //
 // the opening sentence says "published code" and it must not become "attested
 // code". we have no attestation: /lender prints "attestation: none. this
@@ -140,7 +150,7 @@ const ROLES = [
     href: "/agent",
     who: "agent",
     line: "holds the borrower’s figures, and no longer decides the number",
-    example: "the administrative agent on the facility",
+    example: "the fund’s own credit or valuation desk",
     sees: "the figures going in, the decision coming out",
   },
 ];

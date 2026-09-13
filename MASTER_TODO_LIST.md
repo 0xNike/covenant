@@ -1,19 +1,42 @@
 # MASTER_TODO_LIST.md
 
 owner: hermes
-status: **G1 to G4 green and independently verified. 12 sep 2026.**
-remaining: the video (three takes and an edit), and CRE, which is expendable.
+
+**this is the plan as it was executed, kept as the record rather than maintained as a
+live list.** it is one of the planning artifacts the submission rules require to ship
+with the repository, alongside `specs/`, `.claude/agents/`, `CLAUDE.md` and
+`DECISIONS.md`. see `AI_USAGE.md`.
+
+read it as history. where a line reasons from a deadline or a video length we later
+found to be wrong, that is left in place deliberately and annotated, because the
+corrections are part of how this was built. `DECISIONS.md` carries the same record
+with the reasoning.
+
+## where it ended
 
 | | |
 |---|---|
-| now | thu 10 sep 2026, 03:24 SGT |
-| deadline | **sun 13 sep 12:00 EDT = mon 14 sep 00:00 SGT** |
-| wall clock | 104.6 h |
-| build order | 40 working h (CLAUDE.md §5) |
-| slack | ~64 h for sleep, meals, and overrun |
-| target submit | **sun 13 sep, 20:00 SGT.** four hours before the line. |
+| G1 bond issued | **green, verified** |
+| G2 kyc refused, granted, settled | **green, verified** |
+| G3 coupon declared and priced by the token | **green, verified** |
+| G4 collateral pledged, released, seized | **green, verified** |
+| G5 CRE confidential workflow | **dropped.** see below |
+| G6 video and submission | the only work remaining |
 
-CRE is **in**. the hours 26-30 timebox stays at 4 hours and chronos still calls it.
+five of seven ship-order items closed. 21 transactions on hedera testnet, every one
+independently verified by argus against the mirror node and the relay, every hash in
+`EVIDENCE.md`.
+
+**CRE was cut, reversing the earlier decision to keep it.** two facts arrived on the
+same afternoon: the deadline was twelve hours earlier than every plan here assumed,
+and the demo video caps at four minutes rather than five, against a cut that was
+already 4:23. spending four of the remaining hours on the weakest prize to add
+thirty-five seconds to an over-length video was not defensible. the engine was built
+local-first behind a swappable interface precisely so this could happen without
+damage, and that swap was proven by dropping a CRE-shaped provider in and removing it.
+
+**the open checkboxes below are genuine.** they are the video, two final review
+passes, and the CRE items that will not now happen.
 
 ---
 
