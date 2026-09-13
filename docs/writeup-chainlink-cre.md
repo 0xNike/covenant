@@ -1,10 +1,26 @@
 # chainlink, best confidential workflow
 
-**prize:** chainlink, best confidential workflow ($2,000, 2 slots). the secondary submission,
-and an expendable one. `CLAUDE.md` §5 places this leg after the video and the other two
-writeups, on a hard four-hour timebox, precisely so it can fail without taking anything else
-down with it. if you are reading this and `EVIDENCE.md` G5 still says "not started," we did not
-pursue this prize, and nothing above this line in the submission changes as a result.
+**we are not selecting this prize. read this note before the rest.** the engine was built
+behind a single swappable interface, `CovenantEngine` (`lib/engine/types.ts`), specifically so
+a chainlink CRE `handlerInTee` provider could drop in without touching a caller, and the swap
+was proven, not asserted: a CRE-shaped provider was written and typechecked as assignable to
+the interface. we ran out of time to run the timebox that would have turned that into
+qualifying evidence when the deadline turned out to be twelve hours earlier than planned and
+the video cap turned out to be four minutes rather than five, which pulled the build's
+remaining hours toward the hedera submission that had to ship regardless. `EVIDENCE.md` G5
+reads "not started," there is no `handlerInTee` call anywhere in the repository, and no CRE
+CLI simulation ran. rather than select a prize against criteria we do not meet, we are not
+selecting it. this document is kept, not deleted, because the interface work is real and the
+reasoning for stopping is worth a judge's time to read.
+
+---
+
+**prize:** chainlink, best confidential workflow ($2,000, 2 slots). not entered, per the note
+above. the secondary submission, and an expendable one. `CLAUDE.md` §5 places this leg after
+the video and the other two writeups, on a hard four-hour timebox, precisely so it can fail
+without taking anything else down with it. if you are reading this and `EVIDENCE.md` G5 still
+says "not started," we did not pursue this prize, and nothing above this line in the
+submission changes as a result.
 
 **status at time of writing, 12 sep 2026.** the timebox has not opened. hedera tokenization
 gates G1 through G4 are verified (issuance, the compliance gate, the coupon, and the

@@ -383,6 +383,83 @@ account, not by a script holding a key. no private key exists in this repository
 
 ---
 
+## potential developments
+
+this section names the boundary of what exists today and the named technology or mechanism
+that would close each hole. it is not a roadmap. nothing below is committed, in progress, or
+scheduled. read `PROJECT_BRIEF.md` §9 for why these are named against ourselves rather than
+left for a judge to find first.
+
+**input integrity is the gap that matters most.** a hardware-isolated enclave, real or a CRE
+CLI simulation of one, proves the computation was honest. it does not prove the borrower's
+revenue, EBITDA, total debt, cash and interest expense were honest, because the borrower
+supplies all five. an attested computation over unverified inputs is confidently wrong. the
+production answer is authenticated data provenance, not attested execution: the family of
+protocols that prove a value came from a specific authenticated HTTPS session without
+revealing the session, sometimes called zkTLS or TLSNotary-style proofs. Reclaim Protocol and
+Opacity are two implementations in that family; Chainlink's own DECO is the same idea, applied
+to oracle data specifically. zkEmail is the adjacent case, proving the contents of a
+DKIM-signed message without publishing the message, which would let an auditor's signed
+statement be verified inside the engine rather than trusted on the borrower's say-so. the
+simpler version of the same fix is an attestation registry such as EAS: an auditor signs a
+statement on chain, and the engine checks that signature before it computes anything. none of
+this is built. it is named here because, left unnamed, it would read as an oversight rather
+than a known boundary.
+
+**there is no on-chain attestation of the engine.** the confidential engine is built behind
+one swappable interface, `CovenantEngine` (`lib/engine/types.ts`), specifically so a Chainlink
+CRE `handlerInTee` provider drops in without touching a caller, and the swap was proven to
+typecheck. it was not shipped. separately, on-chain verification of a TEE attestation exists
+as its own category, Automata's on-chain attestation verifier being one, which would let a
+contract check an Intel DCAP quote directly rather than take a human's word for what the
+enclave returned. and even if both of the above shipped, the CRE typescript sdk's own
+`ClientCapability.SUPPORTED_CHAIN_SELECTORS` does not list hedera-mainnet or hedera-testnet
+among roughly fifty-five supported chains, so a CRE workflow has no native path to write to
+hedera today. the engine's output reaches the chain because a human reads a screen and signs a
+transaction in metamask, and that would remain true with a live enclave behind it.
+
+**the advance rate is invertible, by design, not by oversight.** `haircut = 1500 + 7 *
+(kpi - 100) + addon`, and the verdict and the haircut are disclosed to the lender on purpose.
+a lender who knows the function and the disclosed haircut recovers the exact net leverage. if
+a deployment wanted the ratio private too, on top of the financials it already withholds, the
+fix is coarsening the disclosed value into bands, or a range proof, a construction typically
+built with zero-knowledge techniques, so the lender learns "leverage is below 3.0x" rather
+than the value.
+
+**the kpi-linked mechanism is unreachable, and there is an unrun path back to it.** `BUG.md`
+B1 establishes that the kpi-linked bond configuration is registered in the deployed resolver
+and cannot be deployed against directly. a static recovery route was checked, not run:
+`updateConfig` to the kpi-linked configuration through `DiamondCut`, then initialising the
+four facets that configuration adds beyond the one this note runs on, then
+`setOperationalStatus`. ninety-one of the ninety-five facets are shared between the two
+configurations at identical versions, which is why the route looks plausible. it was never
+run. the condition on running it, if it ever is, is a throwaway token, never the demo note,
+because a half-completed configuration switch leaves a live token non-operational.
+
+**ATS declares a coupon and moves no value.** the coupon facet has no transfer method: it
+makes an entitlement readable and nothing more. a production deployment needs a settlement
+rail underneath it, a mechanism that moves the note's own currency to the holder of record
+when a coupon is set, rather than a separate transaction on a different asset at a stated
+demo scale, which is what this build does instead.
+
+**no secondary market, and this is a deliberate omission with a reason, not a gap.** hedera's
+own extra-points list puts a secondary market first. an illiquid instrument like this note
+does not clear on a continuous order book, because a permissioned security has to pass a
+compliance check on every trade, not once at issuance. the mechanism that fits is a periodic
+auction, clearing at fixed intervals rather than continuously, which we did not build.
+
+**`Hold.data` is unreachable through the sdk, and reaching it would add a real commitment.**
+the sdk hardcodes it to `0x` on every create call (`RPCTransactionAdapter.ts:1016`). a hash of
+the engine's exact output, committed into that field at hold creation, would bind the
+collateral hold on chain to the specific computation that priced it, checkable by re-hashing
+the engine's published output against it. it is reachable, by a direct call bypassing the sdk
+for that one transaction, the same pattern already used elsewhere in this build. we chose not
+to hand-build calldata for the single most load-bearing transaction in the demo to add a
+commitment that nothing on chain verifies yet: without on-chain attestation of the engine to
+check it against, the commitment records the computation rather than proving it honest.
+
+---
+
 ## evidence
 
 every factual claim in this project traces to a transaction id and a HashScan link in

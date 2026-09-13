@@ -133,47 +133,25 @@ https://github.com/0xNike/covenant
 
 ## 5. partner prizes to select
 
-**hedera, tokenization of anything.** the primary submission. four gates verified on chain
-(issuance, the KYC compliance gate, the coupon, the collateral hold), all independently
-re-checked against the mirror node and the testnet json-rpc relay, not against this project's
-own console. see `docs/writeup-hedera-tokenization.md`.
+**one selection: hedera, tokenization of anything.** the primary and only submission. four
+gates verified on chain (issuance, the KYC compliance gate, the coupon, the collateral hold),
+all independently re-checked against the mirror node and the testnet json-rpc relay, not
+against this project's own console. see `docs/writeup-hedera-tokenization.md`. ETHGlobal's
+rule that selecting more than one track from the same partner still counts as a single
+partner-prize slot means this one selection covers all of hedera's tracks this submission
+maps to, per `PROJECT_BRIEF.md` §6, at no extra cost against the three-prize cap.
 
-**chainlink, best confidential workflow.** see the flag below before selecting this one.
+**chainlink is not selected.** `EVIDENCE.md` G5 status is **not started**. there is no
+`handlerInTee` call anywhere in the repository, only a comment naming it as the target
+(`lib/engine/kernel.ts:8`, `lib/engine/types.ts:13`), and no CRE CLI simulation ran. a
+selection whose criteria are visibly unmet in `EVIDENCE.md` is penalised on an asynchronous,
+no-Q&A read, not ignored: a judge who opens `EVIDENCE.md`, finds "not started" against every
+gate item, and reads the rest of the submission through that lens is a worse outcome than not
+selecting the prize at all. `docs/writeup-chainlink-cre.md` is kept in the repository and
+carries its own note explaining why: the engine was built behind a swappable interface for
+this track and the swap was proven to typecheck, but the timebox that would have turned that
+into qualifying evidence never ran.
 
-**a note on hedera's own multiple tracks.** ETHGlobal's rule is that selecting more than one
-track from the same partner still counts as a single partner-prize slot against the
-three-prize cap, so naming additional hedera tracks, if any apply to this submission, costs
-nothing extra against that cap. this project's own gates map to one hedera track,
-tokenization of anything, per `PROJECT_BRIEF.md` §6. we have not independently verified how
-many tracks hedera runs this cycle or whether any other one applies; confirm the current list
-on the form itself before adding one.
-
----
-
-## the chainlink flag, read before selecting it
-
-`EVIDENCE.md` G5 status is **not started**, not "simulated, not live." the timebox described
-in `MASTER_TODO_LIST.md` block F never opened: `docs/writeup-chainlink-cre.md` itself says, at
-time of writing, "the timebox has not opened," and nothing in the repository or the recent
-commit history shows that changing. `handlerInTee` does not appear anywhere as a working call,
-only as a comment naming the target (`lib/engine/kernel.ts:8`, `lib/engine/types.ts:13`). no
-CRE CLI simulation ran and no evidence of one exists.
-
-that is a different, and worse, position than "we ran a CLI simulation and are honest that it
-is not a live enclave," which is what the gate's own text explicitly allows as a pass. what
-exists instead is an engine built with a clean, swappable interface aimed at a `handlerInTee`
-that never received a caller.
-
-**my recommendation: do not select chainlink, unless CRE work actually lands before the form
-is submitted.** none of the four gate items has any evidence, not a partial one. selecting the
-prize and writing around that with "meaningfully architected for" risks a judge opening
-`EVIDENCE.md`, finding "not started" in plain text, and reading the whole submission through
-that lens afterward, including the hedera claims that are genuinely verified. the honest
-version of this writeup already says the timebox did not open; that is fine as a documented,
-self-flagged limitation inside the hedera submission, and a weak reason to spend one of three
-scarce prize slots on a track with zero qualifying evidence.
-
-if you disagree and want to select it anyway, the honest framing to submit is exactly what
-`docs/writeup-chainlink-cre.md` already says: the interface is real and swappable, the
-`handlerInTee` integration was planned and not attempted, and no CRE evidence exists in any
-form. that is a true statement and a weak one, and it is the only one available.
+**a note on hedera's own multiple tracks.** we have not independently verified how many
+tracks hedera runs this cycle or whether any other one applies beyond tokenization of
+anything; confirm the current list on the form itself before adding one.
