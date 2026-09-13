@@ -41,30 +41,40 @@ judge reads the argument in a README and opens an application to see whether the
 works. the app is now the product, the live figures and the three role views; the case for
 it is below.
 
-**the situation.** private credit is roughly 1.7 trillion dollars of loans held outside the
-banking system. a fund lends to a company and sells participations in that loan to pension
-funds and family offices. a participation is a note, and its buyer holds an illiquid claim
-for three years. a note holder who wants cash before maturity does not have to sell at a
-discount: it can pledge the note and borrow against it. the cash lender on the other side
-has to set one number, which is what percentage of the note it will advance.
+**the situation.** you would not lend someone money against their house and also let them
+tell you what the house is worth. private credit runs close to that. a fund lends to a
+company, holds that loan on its own books, and sells participations in it to pension funds
+and family offices in smaller slices. a participation is a note, and its buyer holds an
+illiquid claim for three years. a note holder who wants cash before maturity does not have to
+sell at a discount: it can pledge the note and borrow against it. the cash lender on the
+other side has to set one number, which is what percentage of the note it will advance, and
+the only mark available to set it against is one the fund produced about its own loan.
 
-**what is wrong with it.** that percentage depends on the borrower's financials, and the
-lender has no right to see them. so an agent bank reads the books and announces a number.
-nobody else can check it, and the borrower pays the agent bank. that is the loudest standing
-criticism of the asset class rather than a contrivance for a demonstration: the marks are
-self-reported and unverifiable, and the party producing them is never independent of the
-party being marked.
+**what is wrong with it.** the fund that holds the loan values it itself, and that self-mark
+is what everything downstream, participations, financing, advance rates, prices against. the
+Financial Stability Board looked at this directly, in a report on private credit
+vulnerabilities: "discrepancies in valuations can arise due to subjective judgment, with
+examples made in comparable cases having different valuations across managers" (FSB, *Report
+on Vulnerabilities in Private Credit*, 6 May 2026, §3.3,
+[fsb.org/uploads/P060526.pdf](https://www.fsb.org/uploads/P060526.pdf)). the same loan, marked
+by different managers, comes out at different numbers, because the judgement behind the mark
+is the manager's own and nobody independent checks it. private credit was roughly $1.7tn
+globally at year-end 2023 (Federal Reserve, FEDS Notes, 23 Feb 2024); the sector has grown
+since. that dispersion in marks is the loudest standing criticism of the asset class rather
+than a contrivance for a demonstration.
 
-**what changes.** covenant gives that job to a program, published before the facility is
-struck, so both sides read the test before either side relies on it. the borrower's filing
-goes in. two things come out: whether the covenant passed, and what percentage of the note
-to advance against it. the advance rate is a published function of the borrower's leverage,
-so a lender can work back to that one ratio. that is intended, because leverage is the
-covenant it agreed to and the thing it is lending against. it cannot recover the revenue,
-EBITDA, total debt, cash or interest expense behind that ratio, because one ratio in several
-unknowns fixes none of them. and once the note is pledged, the power to seize it on default
-sits on chain with a named party that is not the agent bank; the token refuses the call from
-anyone else.
+**what changes.** covenant takes that job away from self-marking and gives it to a program,
+published before the facility is struck, so both sides read the test before either side
+relies on it. the borrower's filing goes in. two things come out: whether the covenant
+passed, and what percentage of the note to advance against it. covenant makes a private
+credit note financeable for a lender who is not entitled to see the borrower's books: it does
+not need to be, because it can check the program instead of the fund's word. the advance rate
+is a published function of the borrower's leverage, so a lender can work back to that one
+ratio. that is intended, because leverage is the covenant it agreed to and the thing it is
+lending against. it cannot recover the revenue, EBITDA, total debt, cash or interest expense
+behind that ratio, because one ratio in several unknowns fixes none of them. and once the
+note is pledged, the power to seize it on default sits on chain with a named party that is
+not the fund; the token refuses the call from anyone else.
 
 **vocabulary, used the same way everywhere in this project.** the *advance rate* is the
 percentage of the note's nominal a lender will lend against. the *haircut* is the rest. they

@@ -186,7 +186,7 @@ by a convention we could quietly break on stage.
 
 the enclave replaces trust in execution with attestation. it does not touch trust in the
 inputs, since the borrower still supplies the revenue and EBITDA figures the engine reads,
-and a borrower's incentive to inflate them is larger and more direct than an agent bank's
-incentive to shade a haircut. see `PROJECT_BRIEF.md` §4 for the full argument. this diagram is
+and a borrower's incentive to inflate them is larger and more direct than a fund's incentive
+to delay marking down its own book. see `PROJECT_BRIEF.md` §4 for the full argument. this diagram is
 the visual half of that same claim: it shows exactly where the attestation ends and the human
 relay begins, so a reader does not have to take our word for where the line is.

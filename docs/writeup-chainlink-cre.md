@@ -137,7 +137,7 @@ if the CRE leg lands, it changes where the computation runs. it does not change 
 verified inputs. the enclave, real or simulated, would prove that the published computation ran
 on the data it was given. it says nothing about whether the borrower's revenue and EBITDA
 figures were themselves accurate, and a borrower's incentive to inflate them is larger and more
-direct than an agent bank's incentive to shade a haircut. that is not a gap specific to the CRE
+direct than a fund's incentive to delay marking down its own book. that is not a gap specific to the CRE
 leg, it is the boundary of what a hardware-isolated enclave does for any input a counterparty
 supplies, and it holds whether the engine behind `/api/engine/run` is the local service, a CRE
 simulation, or a live CRE deployment.

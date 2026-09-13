@@ -17,26 +17,41 @@ can price a risk it is not permitted to inspect.
 
 ## 2. The problem, in plain terms
 
-A private credit fund lends $50m to a mid-sized company. It sells participation in that loan
-to pension funds and family offices in $1m slices. Three parties matter:
+You would not lend someone money against their house and also let them tell you what the
+house is worth. Private credit comes close to doing exactly that.
+
+A private credit fund lends $50m to a mid-sized company and sells participation in that loan
+to pension funds and family offices in $1m slices. The fund holds the loan on its own books
+and marks it itself, and that mark is the number everything downstream, the participation,
+the financing against it, prices off. The Financial Stability Board looked at this directly:
+"discrepancies in valuations can arise due to subjective judgment, with examples made in
+comparable cases having different valuations across managers" (FSB, *Report on
+Vulnerabilities in Private Credit*, 6 May 2026, §3.3,
+https://www.fsb.org/uploads/P060526.pdf). The same loan, marked by different managers, comes
+out at different numbers, because the judgement behind the mark is the manager's own. Private
+credit was roughly $1.7tn globally at year-end 2023 (Federal Reserve, FEDS Notes, 23 Feb
+2024); the sector has grown since, and this dispersion in marks is the asset class's loudest
+standing criticism, not a defect invented for a demonstration.
+
+Three parties sit inside that problem:
 
 | Party | Wants | Constraint |
 |---|---|---|
 | Borrower | Capital | Financials are commercially sensitive and cannot be published |
 | Note holder | Liquidity without waiting 3 years or selling at a discount | Holds an illiquid claim |
-| Cash lender | To lend against the note at a fair advance rate | Has no right to see the borrower's books |
+| Cash lender | To lend against the note at a fair advance rate | Not entitled to see the borrower's books |
 
 **The core asymmetry:** the cash lender must set a haircut on collateral whose quality
-depends entirely on data it is not entitled to see.
+depends on data it cannot see, and today the only number available to price against is one
+the fund holding that collateral produced about itself.
 
-Today the answer is a number from an agent bank that nobody can verify. Private credit is a
-~$1.7tn market and its loudest criticism is exactly this: the marks are self-reported and
-unverifiable. This is not a privacy story invented for a demo. It is the market's actual
-complaint.
-
-**What Covenant does:** the borrower's revenue, EBITDA and leverage go into a hardware
-isolated enclave. Only two things come out — a covenant pass/fail and a haircut. The lender
-never sees the inputs and can still verify the computation ran the published code.
+**What Covenant does:** it takes the valuation out of self-marking and gives the job to a
+program. The borrower's revenue, EBITDA and leverage go into a hardware isolated enclave.
+Only two things come out: a covenant pass/fail and a haircut, published as a function before
+the facility is struck, so both sides read it before either relies on it. Covenant makes a
+private credit note financeable for a lender who is not entitled to see the borrower's
+books: the lender never sees the inputs, and can still verify the computation ran the
+published code.
 
 ---
 
@@ -102,9 +117,9 @@ The enclave lets a function the lender and borrower agree in advance be run on d
 side is entitled to see, and lets the lender check that the published code is what ran.
 **It replaces trust in execution with attestation. It does not touch trust in the inputs.**
 The borrower supplies revenue and EBITDA, and a borrower's incentive to inflate them is
-larger and more direct than an agent bank's incentive to shade a haircut. So an enclave alone
-does not remove trust from this arrangement; it relocates it, to the one party with the
-clearest motive to misreport.
+larger and more direct than a fund's incentive to delay marking down its own book. So an
+enclave alone does not remove trust from this arrangement; it relocates it, to the one party
+with the clearest motive to misreport.
 
 That is not a gap we are papering over. It is the boundary of what this primitive does, and
 the production answer sits just past it: auditor-signed financials, or an authenticated
@@ -112,8 +127,9 @@ accounting API verified inside the enclave before the computation runs. Chainlin
 privacy-preserving access to authenticated Web2 APIs, which is the shape of that answer. We
 name it; we do not build it.
 
-Today the lender gets neither guarantee. It gets a number from an agent bank, with no way to
-check the execution or the inputs. We remove one of those two unknowns and say exactly which.
+Today the lender gets neither guarantee. It gets a number the fund produced about its own
+collateral, with no way to check the execution or the inputs. We remove one of those two
+unknowns and say exactly which.
 A trusted third party could compute the same haircut, but then the lender trusts that party's
 execution *and* its confidentiality. Attestation is the difference, and it is a real one.
 

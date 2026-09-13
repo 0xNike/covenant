@@ -21,6 +21,13 @@ price a risk it is not permitted to inspect. issued and operated on the hedera a
 tokenization studio (ATS), against the pre-deployed resolver `0.0.9212226` and factory
 `0.0.9213391`. we write no solidity and deploy no contracts.
 
+hedera's own suggested ideas for this track lead with posting tokenised treasuries as
+collateral with programmatic proof and release. we build that same mechanism, proof and
+release of tokenised collateral against a lending facility, on the one asset class where the
+haircut is a genuine negotiation rather than a standardised ~2 percent, which is exactly where
+confidential compute earns its place instead of decorating an already-solved problem. see
+`PROJECT_BRIEF.md` §4.
+
 ---
 
 ## the mandatory gates, §6 of `PROJECT_BRIEF.md`
@@ -361,9 +368,9 @@ public. its inputs are not.
 
 **input integrity.** a hardware-isolated enclave proves the computation was honest. it does not
 prove the inputs were. the borrower supplies revenue and EBITDA, and a borrower's incentive to
-inflate them is larger and more direct than an agent bank's incentive to shade a haircut, so
-the enclave alone relocates trust rather than removing it, to the party with the clearest
-motive to misreport. the production answer sits past this primitive: auditor-signed financials,
+inflate them is larger and more direct than a fund's incentive to delay marking down its own
+book, so the enclave alone relocates trust rather than removing it, to the party with the
+clearest motive to misreport. the production answer sits past this primitive: auditor-signed financials,
 or an authenticated accounting api verified inside the enclave before the computation runs. we
 name that path; we do not build it. see `PROJECT_BRIEF.md` §4 for the full argument.
 

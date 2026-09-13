@@ -169,19 +169,39 @@ export default async function Landing() {
 
   return (
     <main className="min-w-0 mx-auto max-w-3xl px-6 py-16 sm:py-20">
-      {/* the opening. one sentence, the whole product, before anything else. */}
-      <h1 className="max-w-[44ch] text-2xl leading-snug tracking-tight text-balance sm:text-[1.75rem]">
-        covenant makes a private credit note financeable for a lender who is
-        not entitled to see the borrower&rsquo;s books. the collateral
-        valuation moves out of an agent bank&rsquo;s judgement and into
-        published code.
+      {/*
+        the opening. led with the house analogy, not the mechanism, because a
+        cold reader has to feel the problem before a party name means anything
+        to them. this replaces an opener that led with "an agent bank reads
+        the books and announces what the slice is worth", which two Mayer
+        Brown primary sources contradict: an administrative agent has no
+        valuation role, and the financing lender's own credit process sets the
+        advance rate. the real, sourced problem is narrower: the fund holding
+        the loans marks them itself. see `specs/07-market-premise.md`.
+      */}
+      <h1 className="max-w-[46ch] text-2xl leading-snug tracking-tight text-balance sm:text-[1.75rem]">
+        you would not lend someone money against their house and also let
+        them tell you what the house is worth. private credit comes close: a
+        fund values its own loans and borrows against its own number.
       </h1>
 
       {/*
-        "its" and "it" refer back to the note in the sentence above, so this
-        line introduces no new noun. it said "a participation" and then "a
-        slice", and both had the same defect: a term whose defining sentence
-        this pass cut.
+        the institutional restatement, kept from the old opener rather than
+        deleted: it is the wrong sentence to lead with for a cold reader and
+        the right one once the analogy above has done its work. "an agent
+        bank's judgement" is gone, replaced by "the fund's own judgement",
+        which is what the FSB's own finding, cited in the README, actually
+        names.
+      */}
+      <p className="mt-6 max-w-[62ch] leading-relaxed text-zinc-600 dark:text-zinc-400">
+        covenant makes a private credit note financeable for a lender who is
+        not entitled to see the borrower&rsquo;s books: the valuation moves
+        out of the fund&rsquo;s own judgement and into published code.
+      </p>
+
+      {/*
+        "its" and "it" refer back to the note in the paragraph above, so this
+        line introduces no new noun.
 
         "sell it or wait three years" names both bad options a holder actually
         faces. the honest fallback today is not waiting, it is selling at a
@@ -190,7 +210,8 @@ export default async function Landing() {
       */}
       <p className="mt-6 max-w-[62ch] leading-relaxed text-zinc-600 dark:text-zinc-400">
         its holder can borrow against it rather than sell it or wait three
-        years. the case is in the{" "}
+        years. the case, and the Financial Stability Board finding behind it,
+        is in the{" "}
         <a
           className="underline underline-offset-2"
           href="https://github.com/0xNike/covenant#why-this-exists"
