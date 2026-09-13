@@ -39,7 +39,7 @@
 // ===========================================================================
 //
 // a search that finds nothing and a search that is broken produce the identical
-// result. so the identical scan runs against /engine, the agent view, which
+// result. so the identical scan runs against /agent, the agent view, which
 // MUST return hits, because the agent legitimately holds every one of these
 // values. if the control comes back clean the search itself has failed and this
 // script exits non-zero without reporting anything about /lender at all.
@@ -77,7 +77,7 @@ const BASE = `http://127.0.0.1:${PORT}`;
  * rate, it belongs in this array before it belongs on camera.
  */
 const PROTECTED = ["/lender", "/holder"];
-const AGENT = "/engine";
+const AGENT = "/agent";
 
 /** the route the server is polled on while waiting for it to come up. */
 const READY = PROTECTED[0];

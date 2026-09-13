@@ -58,7 +58,7 @@ plausible-looking zero next to a figure that is genuinely non-zero — this alre
 once: the landing page showed `in issue 0.00 notes` next to a non-zero holding, traced to one
 read that came back after 22 request timeouts. the front page and `/holder` were rewritten
 afterward to read chain state directly instead of through the diagnostics module, specifically
-to remove this failure mode from those two routes. the console panels at `/console` were not
+to remove this failure mode from those two routes. the console panels at `/transactions` were not
 rewritten and still carry the risk.
 
 the chain truth is independently verified in `EVIDENCE.md`, so nothing recorded is ever wrong

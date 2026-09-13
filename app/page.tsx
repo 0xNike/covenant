@@ -59,7 +59,7 @@
 // section labels, which are navigational rather than prose.
 //
 // no accent colour anywhere on this page. the only colour in the application is
-// the three covenant states on /lender and /engine, and it means something
+// the three covenant states on /lender and /agent, and it means something
 // there. spending it here on decoration would spend it.
 
 import type { Metadata } from "next";
@@ -137,7 +137,7 @@ const ROLES = [
     coda: "never the figures behind them",
   },
   {
-    href: "/engine",
+    href: "/agent",
     who: "agent",
     line: "holds the borrower’s figures, and no longer decides the number",
     example: "the administrative agent on the facility",
@@ -324,8 +324,8 @@ export default async function Landing() {
             EVIDENCE.md
           </a>
           , signed through{" "}
-          <Link className="underline underline-offset-2" href="/console">
-            /console
+          <Link className="underline underline-offset-2" href="/transactions">
+            /transactions
           </Link>
           .
         </p>

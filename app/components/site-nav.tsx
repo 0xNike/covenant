@@ -32,13 +32,13 @@ import { usePathname } from "next/navigation";
 // read directly rather than through `readConfig()`. that helper calls
 // `required()` on a dozen variables and throws if any one is missing, which is
 // correct where a transaction depends on them and wrong here: a nav bar in the
-// root layout that throws takes down every route, including /engine and /lender,
+// root layout that throws takes down every route, including /agent and /lender,
 // which need no ATS configuration at all. next inlines NEXT_PUBLIC_ values at
 // build time, so this is the same variable, read without the blast radius.
 const NETWORK = process.env.NEXT_PUBLIC_NETWORK ?? "network not configured";
 
 // ---------------------------------------------------------------------------
-// THE LABELS, AND WHY THEY ARE NOT THE ROUTE NAMES
+// THE LABELS, AND HOW THEY RELATE TO THE ROUTE NAMES
 // ---------------------------------------------------------------------------
 //
 // the bar used to read: covenant, note holder, lender view, engine, console.
@@ -51,10 +51,16 @@ const NETWORK = process.env.NEXT_PUBLIC_NETWORK ?? "network not configured";
 // twice. "lender view" said view where its siblings said role; the view is what
 // the page is, not who it is for.
 //
-// the routes are unchanged. /engine and /console are referenced throughout the
-// video script, the shot lists and the writeups, and a rename buys nothing a
-// label does not. `label` is what a reader sees, `href` is what everything else
-// already points at.
+// the routes then followed the labels. /engine became /agent and /console
+// became /transactions, because a label and a url that are different words, not
+// shortenings, are two things to say out loud while presenting with the address
+// bar in shot. /holder and /lender stay as they are: "note holder" and "cash
+// lender" shorten to them, so there is nothing to reconcile.
+//
+// note that the ROUTE renamed, not the service. lib/engine and /api/engine are
+// untouched and should stay that way. the engine is the thing that computes,
+// the agent is the party that operates it, and /agent is that party's view of
+// it. collapsing the two words would lose a distinction that is real.
 //
 // `rule` marks the item as a different kind of thing rather than a fourth
 // party: three parties, a vertical rule, then the surface where the
@@ -66,8 +72,8 @@ const LINKS: { href: string; label: string; rule?: boolean }[] = [
   { href: "/", label: "covenant" },
   { href: "/holder", label: "note holder" },
   { href: "/lender", label: "cash lender" },
-  { href: "/engine", label: "agent" },
-  { href: "/console", label: "transactions", rule: true },
+  { href: "/agent", label: "agent" },
+  { href: "/transactions", label: "transactions", rule: true },
 ];
 
 export default function SiteNav() {

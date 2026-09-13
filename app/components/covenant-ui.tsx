@@ -8,11 +8,11 @@
 // carries a value.
 //
 // ---------------------------------------------------------------------------
-// WHY THIS LIVES IN app/components AND NOT IN app/engine
+// WHY THIS LIVES IN app/components AND NOT IN app/agent
 // ---------------------------------------------------------------------------
 //
-// it used to be app/engine/ui.tsx, which meant app/lender/lender-view.tsx
-// imported from the agent's own directory. apollo flagged it: it leaked nothing,
+// it used to sit in the agent's own directory, which meant
+// app/lender/lender-view.tsx imported from there. apollo flagged it: it leaked nothing,
 // but it read as the lender depending on the agent, and the rule above was a
 // comment in a file whose location argued the opposite. a module both sides
 // import is shared, so it sits in a neutral directory and neither side owns it.
@@ -20,7 +20,7 @@
 // the move does not enforce the rule, and nothing in typescript can. what
 // enforces it is the disclosure scan against a PRODUCTION build: fetch /lender,
 // pull every chunk it loads, grep for the fixture values and for the field names
-// of `EngineInputs`, and run the identical scan against /engine as a control
+// of `EngineInputs`, and run the identical scan against /agent as a control
 // that must return hits. a negative result without that control proves only that
 // the search was broken. dev-mode chunk boundaries are not production chunk
 // boundaries, so the scan has to run against `next build` output to mean

@@ -58,7 +58,7 @@ production chunk boundaries. dev splits modules finely for hot reload; `next bui
 them by usage, and that merge is exactly where the leak happens. a clean scan against
 `next dev` says nothing about what ships.
 
-**2. it runs a control scan against `/engine` and requires it to return hits.** a search that
+**2. it runs a control scan against `/agent` and requires it to return hits.** a search that
 finds nothing and a search that is broken produce the identical result. the agent view
 legitimately holds every value being searched for, so it must come back dirty. if it comes
 back clean, the search has failed and the script exits 3 without reporting anything about

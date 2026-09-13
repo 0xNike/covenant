@@ -69,10 +69,10 @@ market-size slide before it.
 ## section 2. issuance recap (0:11-0:23)
 
 **screen:** HashScan contract page `0.0.10450229`, **3 seconds**, then cut to the console
-read-back panel — **route fixed: this panel now lives at `http://localhost:3007/console`,
+read-back panel — **route fixed: this panel now lives at `http://localhost:3007/transactions`,
 block A tab ("block A, issuance"), not the site root.** the operator panels moved off `/` when
 the landing page was rewritten; `/` is the institutional front door now, and it does not carry
-this panel. go to `/console`, click the "block A, issuance" tab, per `docs/shot-list-g1.md`
+this panel. go to `/transactions`, click the "block A, issuance" tab, per `docs/shot-list-g1.md`
 shot 3: the "3. read the rate configuration back" section, token id `0.0.10450229` entered,
 **active config: bond variable rate (2)**, **operational: true**, the facet readiness grid,
 and the notes line explaining the kpi-linked facet is absent. **9 seconds total on this half,
@@ -93,7 +93,7 @@ opens a HashScan "token info" page. do not add one to fill time.
 
 see `docs/shot-list-blocks-bce.md` §B for the click-by-click and the captured hashes.
 
-**screen:** `http://localhost:3007/console`. **route fixed: block E is now the default tab on
+**screen:** `http://localhost:3007/transactions`. **route fixed: block E is now the default tab on
 this page, not block B** — click the "block B, compliance" tab explicitly before this
 section's footage starts. MetaMask connected as the issuer `0.0.10424387` throughout.
 
@@ -136,7 +136,7 @@ and step 8's full removal (-6s), plus incidental trims elsewhere in the block's 
 
 see `docs/shot-list-blocks-bce.md` §C for the click-by-click and the captured hashes.
 
-**screen:** `http://localhost:3007/console`, "block C, rate and coupon" tab. MetaMask
+**screen:** `http://localhost:3007/transactions`, "block C, rate and coupon" tab. MetaMask
 connected as the issuer `0.0.10424387`, same account as block B.
 
 **the protection rule again: step 4b's refusal panel and the "what we sent, what got stamped"
@@ -181,8 +181,8 @@ it is now 22, not 30, and it is shorter for a real reason, not a rushed one: see
 below before assuming this is a straight trim.**
 
 **the shot itself changed since the last version of this script, because the build did.**
-`/engine` no longer requires a cut between two full-screen routes to make this point. as built
-(`app/engine/agent-console.tsx`), `/engine` opens in "both views" mode by default: the agent's
+`/agent` no longer requires a cut between two full-screen routes to make this point. as built
+(`app/agent/agent-console.tsx`), `/agent` opens in "both views" mode by default: the agent's
 form and engine output on the left, a live iframe of `/lender` on the right, **on screen at
 the same time, from the same load.** there is no click between them to film. this is a
 stronger reveal than the hard cut the original script called for, not a weaker one — the
@@ -190,7 +190,7 @@ absence on the right is visible for the entire shot, not only after an edit poin
 watching does not have to trust that the cut was not hiding a beat where the fields briefly
 overlapped.
 
-**screen:** `http://localhost:3007/engine`, "both views" mode (the default). the "q2 filing,
+**screen:** `http://localhost:3007/agent`, "both views" mode (the default). the "q2 filing,
 covenant headroom" fixture loaded on the left: revenue, ebitda, total debt, cash, interest
 expense, all populated. click "run the engine." **hold 8 seconds** as the left panel populates
 — verdict **pass**, net leverage **2.00x**, coupon rate **6.00%**, haircut **22.00%**, advance
@@ -219,7 +219,7 @@ project claims is the financials behind the ratio, not the ratio itself. never s
 only sees the haircut" or "cannot recover the leverage" as if either hides the ratio — both are
 false and both are checkable from `lib/engine/kernel.ts` and `lib/engine/policy.ts`.
 
-**fallback, if the "both views" layout is not what ships on shooting day:** open on `/engine`,
+**fallback, if the "both views" layout is not what ships on shooting day:** open on `/agent`,
 "agent only" mode, the fixture loaded, engine run, hold 10s. hard cut, no wipe, no fade, to
 `/lender` in a new tab, same moment, hold 10s on the empty region and the haircut. narration
 unchanged. this costs no extra time against the budget above; it is the same 22 seconds spent
@@ -239,7 +239,7 @@ the click-by-click and the captured hashes.
 
 final state: note holder 250.00 to 150.00, lender 0 to 100.00, supply unchanged.
 
-**screen:** `http://localhost:3007/console`. **route note: block E is the default tab on this
+**screen:** `http://localhost:3007/transactions`. **route note: block E is the default tab on this
 page** — no tab click needed to reach it, unlike blocks B and C above.
 
 **this is where the recut protects the most and cuts the least.** `executeHoldByPartition`
@@ -343,9 +343,9 @@ script is exactly where these slip in under time pressure:
 
 `attempt()` in `lib/ats/diagnostics.ts` swallows a failed contract read into a zero rather
 than an error. every "state read back off chain" panel in blocks A, B, C and E's console goes
-through this function (confirmed at `app/console/issue-panel.tsx`,
-`app/console/block-b-panel.tsx`, `app/console/block-c-panel.tsx`,
-`app/console/block-e-panel.tsx`). a slow relay can make one of those reads time out and render
+through this function (confirmed at `app/transactions/issue-panel.tsx`,
+`app/transactions/block-b-panel.tsx`, `app/transactions/block-c-panel.tsx`,
+`app/transactions/block-e-panel.tsx`). a slow relay can make one of those reads time out and render
 a plausible-looking zero next to a genuinely non-zero figure — this already happened once, on
 the landing page, before that page was rewritten to read `/holder`'s position directly instead
 of through the diagnostics module specifically to remove this failure mode from `/` and
@@ -406,7 +406,7 @@ that repetition affordable to lose before the protected shots are touched.
 **trimmed, not dropped: section 5, the confidentiality reveal, 30s to 22s.** this is the
 largest single trim in seconds and the one most worth explaining plainly, per the instruction
 not to thin every section until none of them land. it is not a straight cut of the same shot —
-the shot itself changed, because `/engine` now renders both views simultaneously rather than
+the shot itself changed, because `/agent` now renders both views simultaneously rather than
 requiring a navigated cut between two routes. the simultaneous layout makes the same point in
 less time with no loss of clarity: both panels are visible together for the entire 18-second
 hold, not only after a cut point, which is arguably a more legible reveal than the sequential
@@ -443,7 +443,7 @@ next cut after those two starts touching the protected beats.
 ## remaining takes, in shooting order
 
 1. **section 5, the confidentiality reveal, if not already captured against the current
-   `/engine` "both views" build.** check first whether existing engine-console footage shows
+   `/agent` "both views" build.** check first whether existing engine-console footage shows
    the simultaneous layout or the older two-route layout; if it is the older layout, the
    fallback in section 5 above still cuts to the same 22-second budget, so this is not
    necessarily a reshoot. if no engine-console footage exists yet at all, this is the one
@@ -451,8 +451,8 @@ next cut after those two starts touching the protected beats.
 2. **section 7, the closing card.** a static screen, not a live capture — confirm the GitHub
    link, the `EVIDENCE.md` link, and (optionally) the `/holder` line are current before
    recording the voiceover over it.
-3. **sections 1 and 2, HashScan and the console read-back at `/console`, block A tab.** likely
-   already in hand from the original shoot; re-confirm the route (`/console`, not `/`) before
+3. **sections 1 and 2, HashScan and the console read-back at `/transactions`, block A tab.** likely
+   already in hand from the original shoot; re-confirm the route (`/transactions`, not `/`) before
    assuming existing footage still matches what is on screen.
 4. **no new capture needed for sections 3, 4 or 6.** blocks B, C and E are shot. editing work
    only: trim to the durations above, and complete the frame-by-frame diagnostics-figure check

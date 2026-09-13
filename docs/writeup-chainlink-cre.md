@@ -56,7 +56,7 @@ one file in the codebase names a concrete provider. that is deliberate: adding a
 adding a file under `./providers` and one case in the switch, and nothing else changes.
 
 the lender-view / agent-view split that makes the confidentiality boundary visible is built and
-independent of which engine implementation runs. `/engine` shows the borrower's inputs; `/lender`
+independent of which engine implementation runs. `/agent` shows the borrower's inputs; `/lender`
 renders a narrowed result computed server-side, before the page reaches the client. the
 disclosure boundary is enforced by `npm run scan:disclosure`
 (`scripts/scan-disclosure.mjs`), which scans a production build, not the dev server, and

@@ -7,7 +7,7 @@ to all three blocks below without restatement: recorder starts before the block'
 and stays on until the gate closes, say the account out loud before every confirm, HashScan
 opens while the recorder is still running.
 
-block B's UI exists today (`app/console/block-b-panel.tsx`) and every step below is copied
+block B's UI exists today (`app/transactions/block-b-panel.tsx`) and every step below is copied
 from its actual button labels and step numbers, not guessed. block C and block E do not have a
 console built yet at the time this is written. their shot lists describe the exact on-chain
 call, the signer, and what must be legible on screen; if the eventual UI is not a numbered-step
@@ -25,7 +25,7 @@ top of the page, step buttons well below the fold — so the scroll choreography
 throughout; see the notes inside each block's section.
 
 **route note, added after the operator panels moved.** all three blocks now live at
-`http://localhost:3007/console`, not at the site root — `/` is the institutional landing page
+`http://localhost:3007/transactions`, not at the site root — `/` is the institutional landing page
 and carries none of these panels. the console page also changed its default tab: **block E is
 now the default tab, not block B.** block B and block C both require an explicit tab click
 ("block B, compliance" / "block C, rate and coupon") before their first scripted click; block
@@ -67,7 +67,7 @@ that lights a card now scripts the scroll explicitly. this is not a layout fix �
 (click, then scroll up to a large card lighting) reads well on camera. it just cannot be left
 to whoever is holding the mouse.
 
-**screen:** `http://localhost:3007/console`, "block B, compliance" tab — click it, it is no
+**screen:** `http://localhost:3007/transactions`, "block B, compliance" tab — click it, it is no
 longer the default tab on this page.
 **account for every step in this block:** issuer `0.0.10424387`. connect before step 1 and do
 not switch for the rest of the block — the panel refuses to build a transaction from any
@@ -230,7 +230,7 @@ had not been built yet. the console that shipped built it as its own numbered st
 blocked-transfer card. it is a stronger shot than anything else in this block — see the
 dedicated note under step 4b.
 
-**screen:** `http://localhost:3007/console`, "block C, rate and coupon" tab — click it, it is
+**screen:** `http://localhost:3007/transactions`, "block C, rate and coupon" tab — click it, it is
 not the default tab on this page. the panel's own step numbering — 1, 2, 3, 4,
 4b, 5, 6, 7, 8, 9 — is what is used below. an earlier draft of this section numbered a
 "prerequisite" and two separate role grants; that numbering did not survive contact with the
@@ -434,9 +434,9 @@ of those. that revert-shaped negative space is not on tape, but the escrow field
 the signer of step B2 being the same, uninvolved third account is, and that is the claim this
 block exists to prove.
 
-**screen:** `http://localhost:3007/console`, "block E, collateral hold" tab — this is now the
+**screen:** `http://localhost:3007/transactions`, "block E, collateral hold" tab — this is now the
 **default tab** on the console page, so no tab click is needed to reach it, unlike block B and
-block C above. the panel (`app/console/block-e-panel.tsx`) shares the same layout as block B
+block C above. the panel (`app/transactions/block-e-panel.tsx`) shares the same layout as block B
 and block C — two outcome cards ("released" / "executed") pinned at the top of the page, the
 step sections well below them, plus a "prerequisites" panel and a "state read back" panel
 further down still. **the same above-the-fold problem applies here too, scripted below rather

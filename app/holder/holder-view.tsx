@@ -31,7 +31,7 @@
 //
 // it shows a haircut, so it is inside the disclosure boundary and it is scanned
 // by `npm run scan:disclosure` alongside /lender, against a production build,
-// with /engine as the control. the borrower's filing is not on this page, is
+// with /agent as the control. the borrower's filing is not on this page, is
 // not in its bundle, and is not in any request it makes: the haircut arrives
 // through `fetchDisclosure`, the same narrowed object the lender gets, and the
 // position arrives from a chain read that has never seen a financial statement.
@@ -279,7 +279,7 @@ export default function HolderView({
                   no covenant report published
                 </span>
                 <Link
-                  href="/engine"
+                  href="/agent"
                   className="border border-zinc-900 px-3 py-1 dark:border-zinc-100"
                 >
                   run the engine

@@ -5,7 +5,7 @@
 // read directly rather than taken on our word. the panels are in ship order:
 // issuance, compliance, rate and coupon, collateral hold.
 //
-// the role-shaped views live at /holder, /lender and /engine. this page is the
+// the role-shaped views live at /holder, /lender and /agent. this page is the
 // evidence surface, not the product.
 
 "use client";

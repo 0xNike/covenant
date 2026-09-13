@@ -85,8 +85,8 @@ permitted, a coupon is set, snapshotted and its entitlements read, and a collate
 created, released and created again to be executed on default, all independently re-verified
 by argus against the mirror node and the testnet json-rpc relay, not against this project's
 own console or transcript. the application code in `app/` covers the landing page organised
-by party (`app/page.tsx`), the role-shaped views (`app/holder/`, `app/lender/`, `app/engine/`)
-and the transaction-level operator console at `/console` (`app/console/`), which is what
+by party (`app/page.tsx`), the role-shaped views (`app/holder/`, `app/lender/`, `app/agent/`)
+and the transaction-level operator console at `/transactions` (`app/transactions/`), which is what
 produced every gate below. kpi posting is not built and is not claimed, see the G1 naming
 caveat. the CRE leg (G5) has not been attempted.
 
@@ -299,11 +299,11 @@ distinct accounts, is **18.29866232 HBAR**.
 this repository is a next.js 16 / react 19 app with the ATS sdk (`@hashgraph/asset-tokenization-sdk@8.0.0`)
 as an npm dependency. `npm run dev` serves a landing page organised by party (`app/page.tsx`),
 three role-shaped views, the note holder's position (`app/holder/`), the lender's narrowed view
-(`app/lender/`) and the agent's confidential engine console (`app/engine/`), and the
-transaction-level operator console at `/console` (`app/console/`). the operator console holds
-four panels in ship order: issuance (`app/console/issue-panel.tsx`, G1), compliance
-(`app/console/block-b-panel.tsx`, G2), rate and coupon (`app/console/block-c-panel.tsx`, G3) and
-the collateral hold (`app/console/block-e-panel.tsx`, G4). every gate in `EVIDENCE.md` was
+(`app/lender/`) and the agent's confidential engine console (`app/agent/`), and the
+transaction-level operator console at `/transactions` (`app/transactions/`). the operator console holds
+four panels in ship order: issuance (`app/transactions/issue-panel.tsx`, G1), compliance
+(`app/transactions/block-b-panel.tsx`, G2), rate and coupon (`app/transactions/block-c-panel.tsx`, G3) and
+the collateral hold (`app/transactions/block-e-panel.tsx`, G4). every gate in `EVIDENCE.md` was
 signed through one of these four panels. kpi posting is not built and is not claimed, see the
 G1 naming caveat. the instructions below are for running what exists, and will describe more as
 the build order in `MASTER_TODO_LIST.md` moves through its gates.
